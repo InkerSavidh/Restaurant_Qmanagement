@@ -56,12 +56,21 @@ const QueueManagement: React.FC = () => {
       alert('Please fill in required fields');
       return;
     }
+    
+    const customerData = {
+      name: newCustomer.name,
+      partySize: parseInt(newCustomer.partySize),
+      phone: newCustomer.phone
+    };
+    
+    setNewCustomer({ name: '', partySize: '', phone: '' });
+    
     try {
-      await addToQueue({ name: newCustomer.name, partySize: parseInt(newCustomer.partySize), phone: newCustomer.phone });
-      setNewCustomer({ name: '', partySize: '', phone: '' });
-      fetchQueue();
+      await addToQueue(customerData);
+      await fetchQueue();
     } catch (error) {
       console.error('Failed to add customer:', error);
+      alert('Failed to add customer');
     }
   };
 
@@ -89,15 +98,14 @@ const QueueManagement: React.FC = () => {
     }
 
     try {
-      // Seat customer on multiple tables
       await axiosInstance.post('/seating/seat-multiple', { 
         queueEntryId: selectedCustomer, 
         tableIds: selectedTables 
       });
       setSelectedCustomer(''); 
       setSelectedTables([]);
-      fetchQueue();
-      fetchTables();
+      await fetchQueue();
+      await fetchTables();
     } catch (error: any) { 
       console.error('Failed to seat customer:', error);
       alert(error.response?.data?.message || 'Failed to seat customer');
@@ -114,8 +122,11 @@ const QueueManagement: React.FC = () => {
   const handleRemove = async (id: string) => {
     try {
       await removeFromQueue(id);
-      fetchQueue();
-    } catch (error) { console.error('Failed to remove:', error); }
+      await fetchQueue();
+    } catch (error) { 
+      console.error('Failed to remove:', error);
+      alert('Failed to remove customer');
+    }
   };
 
   const totalPages = Math.ceil(queue.length / itemsPerPage);

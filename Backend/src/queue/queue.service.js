@@ -42,16 +42,13 @@ export const getNextInQueue = async () => {
 export const addToQueue = async (data) => {
   const { name, partySize, phone } = data;
   
-  // Find or create customer
-  let customer = await prisma.customer.findFirst({
-    where: { phoneNumber: phone || 'N/A' },
+  // Always create a new customer for each queue entry
+  const customer = await prisma.customer.create({
+    data: { 
+      name, 
+      phoneNumber: phone && phone.trim() ? phone : `walk-in-${Date.now()}` 
+    },
   });
-  
-  if (!customer) {
-    customer = await prisma.customer.create({
-      data: { name, phoneNumber: phone || 'N/A' },
-    });
-  }
   
   // Get next position
   const lastEntry = await prisma.queueEntry.findFirst({

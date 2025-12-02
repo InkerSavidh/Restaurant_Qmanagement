@@ -12,8 +12,10 @@ const CustomerHistory: React.FC = () => {
     setLoading(true);
     try {
       const data = await getCustomerHistory(filters);
+      console.log('Customer history data:', data);
       setHistory(data);
     } catch (error) {
+      console.error('Failed to fetch customer history:', error);
       // Mock data for demo
       setHistory([
         { id: '1', name: 'Dev', phone: '+919496397649', partySize: 10, tableSeated: 'T94', arrivalTime: '20 Nov 2025, 4:33 pm', seatedTime: '4:40 pm', departedTime: '4:17 pm', totalWait: 7, dineTime: 1417 },

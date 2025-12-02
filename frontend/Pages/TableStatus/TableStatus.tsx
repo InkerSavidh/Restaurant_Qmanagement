@@ -71,13 +71,22 @@ const TableStatus: React.FC = () => {
 
   const handleStatusChange = async (tableId: string, currentStatus: string) => {
     const newStatus = currentStatus === 'AVAILABLE' ? 'UNAVAILABLE' : 'AVAILABLE';
+    
+    // Optimistic update - change UI immediately
+    setTables(prev => prev.map(t => 
+      t.id === tableId ? { ...t, status: newStatus } : t
+    ));
+    
     try {
+      // Update on server in background
       await updateTableStatus(tableId, newStatus);
-      fetchTables();
     } catch (error) {
+      // Revert on error
+      console.error('Failed to update table status:', error);
       setTables(prev => prev.map(t => 
-        t.id === tableId ? { ...t, status: newStatus } : t
+        t.id === tableId ? { ...t, status: currentStatus } : t
       ));
+      alert('Failed to update table status');
     }
   };
 
@@ -154,7 +163,7 @@ const TableStatus: React.FC = () => {
             <div
               key={table.id}
               className={`border rounded-lg p-3 flex flex-col items-center justify-between aspect-square ${
-                isAvailable(table.status) ? 'bg-[#e7f7ed] border-[#d1e7dd]' : 'bg-gray-100 border-gray-300'
+                isAvailable(table.status) ? 'bg-green-100 border-green-300' : 'bg-gray-100 border-gray-300'
               }`}
             >
               <div className="text-center mt-2">
