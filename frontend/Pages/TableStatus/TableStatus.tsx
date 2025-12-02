@@ -1,0 +1,272 @@
+import React, { useState, useEffect } from 'react';
+import { getTablesByFloor, updateTableStatus, getFloors, createTable, deleteTable } from '../../api/tables.api';
+
+interface Table {
+  id: string;
+  tableNumber: string;
+  capacity: number;
+  status: string;
+}
+
+interface Floor {
+  id: string;
+  name: string;
+}
+
+const TableStatus: React.FC = () => {
+  const [activeFloor, setActiveFloor] = useState<string>('1');
+  const [floors, setFloors] = useState<Floor[]>([
+    { id: '1', name: 'Floor 1' },
+    { id: '2', name: 'Floor 2' },
+  ]);
+  const [tables, setTables] = useState<Table[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [newTableNumber, setNewTableNumber] = useState('');
+  const [newTableCapacity, setNewTableCapacity] = useState(4);
+  const [editingTable, setEditingTable] = useState<Table | null>(null);
+
+  useEffect(() => {
+    fetchFloors();
+  }, []);
+
+  useEffect(() => {
+    if (activeFloor) fetchTables();
+  }, [activeFloor]);
+
+  const fetchFloors = async () => {
+    try {
+      const data = await getFloors();
+      if (data && data.length > 0) {
+        setFloors(data);
+        setActiveFloor(data[0].id);
+      }
+    } catch (error) {
+      // Use default floors
+    }
+  };
+
+  const fetchTables = async () => {
+    setLoading(true);
+    try {
+      const data = await getTablesByFloor(activeFloor);
+      setTables(data);
+    } catch (error) {
+      generateMockTables();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const generateMockTables = () => {
+    const startNum = activeFloor === '1' ? 1 : 49;
+    const mockTables: Table[] = Array.from({ length: 48 }, (_, i) => ({
+      id: `table-${startNum + i}`,
+      tableNumber: `T${startNum + i}`,
+      capacity: (startNum + i) % 3 === 0 ? 6 : (startNum + i) % 2 === 0 ? 4 : 2,
+      status: 'AVAILABLE',
+    }));
+    setTables(mockTables);
+  };
+
+  const handleStatusChange = async (tableId: string, currentStatus: string) => {
+    const newStatus = currentStatus === 'AVAILABLE' ? 'UNAVAILABLE' : 'AVAILABLE';
+    try {
+      await updateTableStatus(tableId, newStatus);
+      fetchTables();
+    } catch (error) {
+      setTables(prev => prev.map(t => 
+        t.id === tableId ? { ...t, status: newStatus } : t
+      ));
+    }
+  };
+
+  const handleAddTable = async () => {
+    if (!newTableNumber.trim()) {
+      alert('Please enter a table number');
+      return;
+    }
+    try {
+      await createTable({
+        tableNumber: newTableNumber,
+        capacity: newTableCapacity,
+        floorId: activeFloor,
+      });
+      setNewTableNumber('');
+      setNewTableCapacity(4);
+      fetchTables();
+    } catch (error: any) {
+      alert(error.response?.data?.message || 'Failed to add table');
+    }
+  };
+
+  const handleDeleteTable = async (tableId: string) => {
+    if (!confirm('Are you sure you want to delete this table?')) return;
+    try {
+      await deleteTable(tableId);
+      fetchTables();
+    } catch (error: any) {
+      alert(error.response?.data?.message || 'Failed to delete table');
+    }
+  };
+
+  const getStatusDisplay = (status: string) => status === 'AVAILABLE' ? 'FREE' : status;
+  const isAvailable = (status: string) => status === 'AVAILABLE';
+
+  return (
+    <div className="p-8">
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold text-gray-900">Table Status</h2>
+        <button 
+          onClick={() => setShowEditModal(true)}
+          className="bg-[#5D3FD3] hover:bg-purple-700 text-white px-4 py-2 rounded-md flex items-center gap-2 text-sm"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+          </svg>
+          Edit Layout
+        </button>
+      </div>
+
+      <div className="flex gap-2 mb-6">
+        {floors.map(floor => (
+          <button
+            key={floor.id}
+            onClick={() => setActiveFloor(floor.id)}
+            className={`px-6 py-2 rounded-md text-sm font-medium border ${
+              activeFloor === floor.id
+                ? 'bg-[#0d6efd] text-white border-[#0d6efd]'
+                : 'bg-white text-[#0d6efd] border-[#0d6efd] hover:bg-blue-50'
+            }`}
+          >
+            {floor.name}
+          </button>
+        ))}
+      </div>
+
+      {loading ? (
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#5D3FD3]"></div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 md:grid-cols-5 lg:grid-cols-10 gap-3">
+          {tables.map((table) => (
+            <div
+              key={table.id}
+              className={`border rounded-lg p-3 flex flex-col items-center justify-between aspect-square ${
+                isAvailable(table.status) ? 'bg-[#e7f7ed] border-[#d1e7dd]' : 'bg-gray-100 border-gray-300'
+              }`}
+            >
+              <div className="text-center mt-2">
+                <div className="font-bold text-gray-700">T{table.tableNumber}</div>
+                <div className="text-xs text-gray-500">Cap: {table.capacity}</div>
+                <div className={`text-[10px] font-bold mt-1 uppercase ${isAvailable(table.status) ? 'text-green-700' : 'text-gray-500'}`}>
+                  {getStatusDisplay(table.status)}
+                </div>
+              </div>
+              <button
+                onClick={() => handleStatusChange(table.id, table.status)}
+                className={`w-full text-[10px] py-1 rounded text-white ${
+                  isAvailable(table.status) ? 'bg-gray-500 hover:bg-gray-600' : 'bg-[#198754] hover:bg-green-700'
+                }`}
+              >
+                {isAvailable(table.status) ? 'Unavailable' : 'Make Available'}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Edit Layout Modal */}
+      {showEditModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[80vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold">Edit Table Layout</h3>
+              <button onClick={() => setShowEditModal(false)} className="text-gray-500 hover:text-gray-700">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Add New Table Form */}
+            <div className="bg-gray-50 p-4 rounded-lg mb-4">
+              <h4 className="font-semibold mb-3">Add New Table</h4>
+              <div className="flex gap-3 items-end">
+                <div className="flex-1">
+                  <label className="block text-sm text-gray-600 mb-1">Table Number</label>
+                  <input
+                    type="text"
+                    value={newTableNumber}
+                    onChange={(e) => setNewTableNumber(e.target.value)}
+                    placeholder="e.g., 15"
+                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#5D3FD3]"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-sm text-gray-600 mb-1">Capacity</label>
+                  <select
+                    value={newTableCapacity}
+                    onChange={(e) => setNewTableCapacity(Number(e.target.value))}
+                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-[#5D3FD3]"
+                  >
+                    {[2, 4, 6, 8, 10, 12].map(cap => (
+                      <option key={cap} value={cap}>{cap} seats</option>
+                    ))}
+                  </select>
+                </div>
+                <button
+                  onClick={handleAddTable}
+                  className="bg-[#198754] hover:bg-green-700 text-white px-4 py-2 rounded-md"
+                >
+                  Add Table
+                </button>
+              </div>
+            </div>
+
+            {/* Existing Tables List */}
+            <div>
+              <h4 className="font-semibold mb-3">Existing Tables ({floors.find(f => f.id === activeFloor)?.name})</h4>
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {tables.map(table => (
+                  <div key={table.id} className="flex items-center justify-between bg-gray-50 p-3 rounded-lg">
+                    <div className="flex items-center gap-4">
+                      <span className="font-medium">T{table.tableNumber}</span>
+                      <span className="text-sm text-gray-500">Capacity: {table.capacity}</span>
+                      <span className={`text-xs px-2 py-1 rounded ${
+                        isAvailable(table.status) ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'
+                      }`}>
+                        {getStatusDisplay(table.status)}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => handleDeleteTable(table.id)}
+                      className="text-red-500 hover:text-red-700 p-1"
+                      title="Delete table"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-4 flex justify-end">
+              <button
+                onClick={() => setShowEditModal(false)}
+                className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-md"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default TableStatus;

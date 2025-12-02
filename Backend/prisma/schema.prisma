@@ -1,0 +1,170 @@
+// Backend/prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// User model for authentication
+model User {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  password      String
+  name          String
+  role          String   @default("WAITER") // ADMIN or WAITER
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  deletedAt     DateTime?
+  
+  activityLogs       ActivityLog[]
+  seatingAssignments SeatingSession[] @relation("AssignedBy")
+  
+  @@map("users")
+}
+
+// Floor model for restaurant layout
+model Floor {
+  id           String   @id @default(uuid())
+  name         String
+  displayOrder Int
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  tables Table[]
+  
+  @@map("floors")
+}
+
+// Table model
+model Table {
+  id          String   @id @default(uuid())
+  tableNumber String
+  capacity    Int
+  floorId     String
+  status      String   @default("AVAILABLE") // AVAILABLE, OCCUPIED, RESERVED, CLEANING, UNAVAILABLE
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  floor           Floor            @relation(fields: [floorId], references: [id])
+  seatingSessions SeatingSession[]
+  
+  @@unique([tableNumber, floorId])
+  @@map("tables")
+}
+
+// Customer model
+model Customer {
+  id          String   @id @default(uuid())
+  name        String
+  phoneNumber String
+  email       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  queueEntries QueueEntry[]
+  reservations Reservation[]
+  
+  @@map("customers")
+}
+
+// Queue entry model
+model QueueEntry {
+  id                   String   @id @default(uuid())
+  customerId           String
+  partySize            Int
+  status               String   @default("WAITING") // WAITING, NOTIFIED, SEATED, CANCELLED, NO_SHOW
+  position             Int
+  estimatedWaitMinutes Int
+  notes                String?
+  entryTime            DateTime @default(now())
+  notifiedAt           DateTime?
+  seatedAt             DateTime?
+  cancelledAt          DateTime?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  
+  customer       Customer        @relation(fields: [customerId], references: [id])
+  seatingSession SeatingSession?
+  
+  @@map("queue_entries")
+}
+
+// Reservation model
+model Reservation {
+  id              String   @id @default(uuid())
+  customerId      String
+  partySize       Int
+  reservationTime DateTime
+  status          String   @default("CONFIRMED") // CONFIRMED, REMINDED, ARRIVED, SEATED, CANCELLED, NO_SHOW
+  notes           String?
+  reminderSentAt  DateTime?
+  arrivedAt       DateTime?
+  cancelledAt     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  customer       Customer        @relation(fields: [customerId], references: [id])
+  seatingSession SeatingSession?
+  
+  @@map("reservations")
+}
+
+// Seating session model
+model SeatingSession {
+  id            String    @id @default(uuid())
+  tableId       String
+  queueEntryId  String?   @unique
+  reservationId String?   @unique
+  partySize     Int
+  seatedAt      DateTime  @default(now())
+  endedAt       DateTime?
+  assignedById  String
+  notes         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  table       Table        @relation(fields: [tableId], references: [id])
+  queueEntry  QueueEntry?  @relation(fields: [queueEntryId], references: [id])
+  reservation Reservation? @relation(fields: [reservationId], references: [id])
+  assignedBy  User         @relation("AssignedBy", fields: [assignedById], references: [id])
+  
+  @@map("seating_sessions")
+}
+
+// Waiter model
+model Waiter {
+  id          String   @id @default(uuid())
+  name        String
+  phoneNumber String
+  email       String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@map("waiters")
+}
+
+// Activity log model
+model ActivityLog {
+  id         String   @id @default(uuid())
+  userId     String?
+  action     String
+  entityType String
+  entityId   String?
+  details    String?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+  
+  user User? @relation(fields: [userId], references: [id])
+  
+  @@map("activity_logs")
+}
