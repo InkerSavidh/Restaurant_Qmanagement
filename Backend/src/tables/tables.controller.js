@@ -86,6 +86,12 @@ export const deleteTable = async (req, res, next) => {
     await tablesService.deleteTable(id);
     return successResponse(res, 'Table deleted successfully');
   } catch (error) {
+    if (error.message.includes('active seating')) {
+      return errorResponse(res, error.message, 400);
+    }
+    if (error.code === 'P2025') {
+      return errorResponse(res, 'Table not found', 404);
+    }
     next(error);
   }
 };

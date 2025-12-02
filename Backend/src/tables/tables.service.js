@@ -76,11 +76,23 @@ export const createTable = async (data) => {
 };
 
 /**
- * Delete a table (soft delete)
+ * Delete a table (hard delete)
  */
 export const deleteTable = async (tableId) => {
-  return await prisma.table.update({
+  // Check if table has any active seating sessions
+  const activeSessions = await prisma.seatingSession.findFirst({
+    where: { 
+      tableId,
+      endedAt: null 
+    },
+  });
+  
+  if (activeSessions) {
+    throw new Error('Cannot delete table with active seating session');
+  }
+  
+  // Hard delete the table
+  return await prisma.table.delete({
     where: { id: tableId },
-    data: { isActive: false },
   });
 };
