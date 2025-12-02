@@ -3,7 +3,7 @@ import { getActiveSeating, endSeatingSession, SeatedParty } from '../../api/seat
 
 const OccupiedTables: React.FC = () => {
   const [seatedParties, setSeatedParties] = useState<SeatedParty[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     fetchSeatedParties();
@@ -18,19 +18,24 @@ const OccupiedTables: React.FC = () => {
     } catch (error) {
       console.error('Error fetching seated parties:', error);
       setSeatedParties([]);
-    } finally {
-      setLoading(false);
     }
   };
 
   const handleCheckout = async (sessionId: string, customerName: string) => {
     if (!confirm(`Checkout ${customerName}?`)) return;
     
+    // Remove from UI immediately
+    const previousParties = [...seatedParties];
+    setSeatedParties(prev => prev.filter(p => p.id !== sessionId));
+    
     try {
       await endSeatingSession(sessionId);
-      fetchSeatedParties();
+      // Refresh to sync with server
+      await fetchSeatedParties();
     } catch (error: any) {
       console.error('Failed to checkout:', error);
+      // Restore on failure
+      setSeatedParties(previousParties);
       alert(error.response?.data?.message || 'Failed to checkout customer');
     }
   };

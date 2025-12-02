@@ -3,7 +3,7 @@ import { getWaiters, createWaiter, deleteWaiter, Waiter } from '../../api/waiter
 
 const ManageWaiters: React.FC = () => {
   const [waiters, setWaiters] = useState<Waiter[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [newWaiter, setNewWaiter] = useState({ username: '', password: '' });
 
   useEffect(() => { fetchWaiters(); }, []);
@@ -14,7 +14,7 @@ const ManageWaiters: React.FC = () => {
       setWaiters(data);
     } catch (error) {
       setWaiters([{ id: '1', username: 'test' }]);
-    } finally { setLoading(false); }
+    }
   };
 
   const handleAddWaiter = async (e: React.FormEvent) => {

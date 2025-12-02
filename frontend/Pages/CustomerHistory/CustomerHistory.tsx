@@ -3,13 +3,12 @@ import { getCustomerHistory, HistoryEntry, HistoryFilters } from '../../api/hist
 
 const CustomerHistory: React.FC = () => {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [filters, setFilters] = useState<HistoryFilters>({ startDate: '', endDate: '', customerName: '', tableNumber: '' });
 
   useEffect(() => { fetchHistory(); }, []);
 
   const fetchHistory = async () => {
-    setLoading(true);
     try {
       const data = await getCustomerHistory(filters);
       console.log('Customer history data:', data);
@@ -24,7 +23,7 @@ const CustomerHistory: React.FC = () => {
         { id: '4', name: 'Manu Joseph', phone: '+917907613588', partySize: 2, tableSeated: 'T1', arrivalTime: '20 Nov 2025, 4:12 pm', seatedTime: '4:12 pm', departedTime: '4:40 pm', totalWait: 0, dineTime: 28 },
         { id: '5', name: 'Amith Raman', phone: '+971507594471', partySize: 5, tableSeated: 'T38', arrivalTime: '20 Nov 2025, 4:12 pm', seatedTime: '4:12 pm', departedTime: '4:18 pm', totalWait: 0, dineTime: 1446 },
       ]);
-    } finally { setLoading(false); }
+    }
   };
 
   const handleApplyFilter = () => fetchHistory();

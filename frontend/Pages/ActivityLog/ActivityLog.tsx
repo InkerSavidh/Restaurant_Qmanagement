@@ -3,14 +3,13 @@ import { getActivityLogs, ActivityLog as ActivityLogType, ActivityFilters } from
 
 const ActivityLog: React.FC = () => {
   const [logs, setLogs] = useState<ActivityLogType[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [filters, setFilters] = useState<ActivityFilters>({ userType: '', userName: '', table: '', startDate: '', endDate: '' });
   const [users] = useState(['Admin', 'test']);
 
   useEffect(() => { fetchLogs(); }, []);
 
   const fetchLogs = async () => {
-    setLoading(true);
     try {
       const data = await getActivityLogs(filters);
       setLogs(data);
@@ -23,7 +22,7 @@ const ActivityLog: React.FC = () => {
         { id: '5', timestamp: '20 Nov 2025, 11:10 am', user: 'test', badge: 'Made Available', details: 'Table T94 made available.' },
         { id: '6', timestamp: '20 Nov 2025, 11:10 am', user: 'test', badge: 'Cleared', details: 'Table T1 marked free (previously occupied by Manu Joseph).' },
       ]);
-    } finally { setLoading(false); }
+    }
   };
 
   const handleFilter = () => fetchLogs();

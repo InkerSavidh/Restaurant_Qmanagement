@@ -26,7 +26,7 @@ const Dashboard: React.FC = () => {
     partiesSeatedToday: 0,
   });
   const [nextCustomer, setNextCustomer] = useState<NextCustomer | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     fetchDashboardData();
@@ -44,8 +44,6 @@ const Dashboard: React.FC = () => {
       if (nextData) setNextCustomer(nextData);
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
-    } finally {
-      setLoading(false);
     }
   };
 

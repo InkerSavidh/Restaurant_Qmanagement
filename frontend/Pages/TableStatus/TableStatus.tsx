@@ -20,7 +20,7 @@ const TableStatus: React.FC = () => {
     { id: '2', name: 'Floor 2' },
   ]);
   const [tables, setTables] = useState<Table[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [newTableNumber, setNewTableNumber] = useState('');
   const [newTableCapacity, setNewTableCapacity] = useState(4);
@@ -47,14 +47,11 @@ const TableStatus: React.FC = () => {
   };
 
   const fetchTables = async () => {
-    setLoading(true);
     try {
       const data = await getTablesByFloor(activeFloor);
       setTables(data);
     } catch (error) {
       generateMockTables();
-    } finally {
-      setLoading(false);
     }
   };
 

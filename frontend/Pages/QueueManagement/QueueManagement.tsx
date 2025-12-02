@@ -14,7 +14,7 @@ const QueueManagement: React.FC = () => {
   const [autoAllocator, setAutoAllocator] = useState(true);
   const [queue, setQueue] = useState<QueueEntry[]>([]);
   const [tables, setTables] = useState<Table[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
@@ -45,8 +45,6 @@ const QueueManagement: React.FC = () => {
     } catch (error) {
       console.error('Error fetching queue:', error);
       setQueue([]);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -63,13 +61,30 @@ const QueueManagement: React.FC = () => {
       phone: newCustomer.phone
     };
     
+    // Create optimistic entry with temporary ID
+    const optimisticEntry: QueueEntry = {
+      id: `temp-${Date.now()}`,
+      customerName: customerData.name,
+      partySize: customerData.partySize,
+      phone: customerData.phone || '',
+      waitTime: 0,
+      position: queue.length + 1,
+      entryTime: new Date().toISOString(),
+      status: 'WAITING'
+    };
+    
+    // Add to UI immediately
+    setQueue(prev => [...prev, optimisticEntry]);
     setNewCustomer({ name: '', partySize: '', phone: '' });
     
     try {
       await addToQueue(customerData);
+      // Refresh to get real data from server
       await fetchQueue();
     } catch (error) {
       console.error('Failed to add customer:', error);
+      // Remove optimistic entry on failure
+      setQueue(prev => prev.filter(q => q.id !== optimisticEntry.id));
       alert('Failed to add customer');
     }
   };
@@ -120,11 +135,18 @@ const QueueManagement: React.FC = () => {
   };
 
   const handleRemove = async (id: string) => {
+    // Remove from UI immediately
+    const previousQueue = [...queue];
+    setQueue(prev => prev.filter(q => q.id !== id));
+    
     try {
       await removeFromQueue(id);
+      // Refresh to sync with server
       await fetchQueue();
     } catch (error) { 
       console.error('Failed to remove:', error);
+      // Restore on failure
+      setQueue(previousQueue);
       alert('Failed to remove customer');
     }
   };
