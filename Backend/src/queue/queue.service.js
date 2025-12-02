@@ -12,7 +12,7 @@ export const getQueueList = async () => {
     id: entry.id,
     customerName: entry.customer.name,
     partySize: entry.partySize,
-    phone: entry.customer.phoneNumber,
+    phone: entry.customer.phoneNumber?.startsWith('walk-in-') ? 'N/A' : (entry.customer.phoneNumber || 'N/A'),
     waitTime: entry.estimatedWaitMinutes,
     position: entry.position,
     entryTime: entry.entryTime.toISOString(),
@@ -33,7 +33,7 @@ export const getNextInQueue = async () => {
     id: entry.id,
     customerName: entry.customer.name,
     partySize: entry.partySize,
-    phone: entry.customer.phoneNumber,
+    phone: entry.customer.phoneNumber?.startsWith('walk-in-') ? 'N/A' : (entry.customer.phoneNumber || 'N/A'),
     waitTime: entry.estimatedWaitMinutes,
     position: entry.position,
   };
@@ -46,7 +46,7 @@ export const addToQueue = async (data) => {
   const customer = await prisma.customer.create({
     data: { 
       name, 
-      phoneNumber: phone && phone.trim() ? phone : `walk-in-${Date.now()}` 
+      phoneNumber: phone && phone.trim() ? phone : null 
     },
   });
   
@@ -74,16 +74,19 @@ export const addToQueue = async (data) => {
 };
 
 export const removeFromQueue = async (queueId) => {
+  console.log('📝 Service: Updating queue entry to CANCELLED:', queueId);
   const entry = await prisma.queueEntry.update({
     where: { id: queueId },
     data: { status: 'CANCELLED', cancelledAt: new Date() },
   });
   
+  console.log('📝 Service: Entry cancelled, updating positions for entries after position:', entry.position);
   // Update positions for remaining entries
   await prisma.queueEntry.updateMany({
     where: { status: 'WAITING', position: { gt: entry.position } },
     data: { position: { decrement: 1 } },
   });
   
+  console.log('✅ Service: Queue entry removed successfully');
   return entry;
 };

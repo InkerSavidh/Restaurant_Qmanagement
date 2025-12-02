@@ -64,7 +64,7 @@ model Table {
 model Customer {
   id          String   @id @default(uuid())
   name        String
-  phoneNumber String
+  phoneNumber String?
   email       String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

@@ -23,8 +23,15 @@ export const addToQueue = async (data: { name: string; partySize: number; phone?
 };
 
 export const removeFromQueue = async (queueId: string) => {
-  const response = await axiosInstance.delete(`/queue/${queueId}`);
-  return response.data;
+  console.log('🔴 Frontend: Calling DELETE /queue/' + queueId);
+  try {
+    const response = await axiosInstance.delete(`/queue/${queueId}`);
+    console.log('✅ Frontend: Delete successful', response.data);
+    return response.data;
+  } catch (error) {
+    console.error('❌ Frontend: Delete failed', error);
+    throw error;
+  }
 };
 
 export const seatCustomer = async (queueEntryId: string, tableId: string) => {
