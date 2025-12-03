@@ -60,16 +60,6 @@ async function main() {
     },
   });
 
-  const terrace = await prisma.floor.upsert({
-    where: { id: '3' },
-    update: {},
-    create: {
-      id: '3',
-      name: 'Terrace',
-      displayOrder: 3,
-    },
-  });
-
   console.log('✅ Floors created');
 
   // Create tables for Ground Floor
@@ -85,10 +75,6 @@ async function main() {
     { tableNumber: '2', capacity: 4, floorId: '2', status: 'AVAILABLE' },
     { tableNumber: '3', capacity: 4, floorId: '2', status: 'OCCUPIED' },
     { tableNumber: '4', capacity: 6, floorId: '2', status: 'AVAILABLE' },
-    // Terrace
-    { tableNumber: '1', capacity: 4, floorId: '3', status: 'AVAILABLE' },
-    { tableNumber: '2', capacity: 4, floorId: '3', status: 'AVAILABLE' },
-    { tableNumber: '3', capacity: 6, floorId: '3', status: 'AVAILABLE' },
   ];
 
   for (const table of tables) {
