@@ -36,12 +36,9 @@ export const addToQueue = async (req, res, next) => {
 export const removeFromQueue = async (req, res, next) => {
   try {
     const { id } = req.params;
-    console.log('🗑️ Removing queue entry:', id);
     const entry = await queueService.removeFromQueue(id);
-    console.log('✅ Queue entry removed:', entry);
     return successResponse(res, 'Removed from queue successfully', entry);
   } catch (error) {
-    console.error('❌ Error removing queue entry:', error);
     next(error);
   }
 };
