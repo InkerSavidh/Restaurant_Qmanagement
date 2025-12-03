@@ -46,10 +46,18 @@ const TableStatus: React.FC = () => {
     }
   };
 
+  const sortTablesByNumber = (tables: Table[]) => {
+    return tables.sort((a, b) => {
+      const numA = parseInt(a.tableNumber) || 0;
+      const numB = parseInt(b.tableNumber) || 0;
+      return numA - numB;
+    });
+  };
+
   const fetchTables = async () => {
     try {
       const data = await getTablesByFloor(activeFloor);
-      setTables(data);
+      setTables(sortTablesByNumber(data));
     } catch (error) {
       generateMockTables();
     }
@@ -156,7 +164,7 @@ const TableStatus: React.FC = () => {
         </div>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-5 lg:grid-cols-10 gap-3">
-          {tables.map((table) => (
+          {sortTablesByNumber([...tables]).map((table) => (
             <div
               key={table.id}
               className={`border rounded-lg p-3 flex flex-col items-center justify-between aspect-square ${
@@ -235,7 +243,7 @@ const TableStatus: React.FC = () => {
             <div>
               <h4 className="font-semibold mb-3">Existing Tables ({floors.find(f => f.id === activeFloor)?.name})</h4>
               <div className="space-y-2 max-h-64 overflow-y-auto">
-                {tables.map(table => (
+                {sortTablesByNumber([...tables]).map(table => (
                   <div key={table.id} className="flex items-center justify-between bg-gray-50 p-3 rounded-lg">
                     <div className="flex items-center gap-4">
                       <span className="font-medium">T{table.tableNumber}</span>
