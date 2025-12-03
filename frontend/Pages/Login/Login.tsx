@@ -77,9 +77,12 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
       <div className="w-full max-w-[400px] bg-white rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-8">
         
         {/* Header */}
-        <h1 className="text-2xl font-bold text-center text-[#5D3FD3] mb-6 italic">
-          RestroFlow Login
-        </h1>
+        <div className='flex justify-center'>
+          <svg className="w-10 h-10 text-[#5D3FD3]" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
+          <span className="text-2xl font-bold text-center text-[#5D3FD3] mb-6">
+            RestroFlow Login
+          </span>
+        </div>
 
         {/* Success Alert */}
         {showLogoutMessage && (
