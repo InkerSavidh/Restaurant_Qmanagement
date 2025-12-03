@@ -14,6 +14,7 @@ const App: React.FC = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [isLoading, setIsLoading] = useState(true);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem('authToken');
@@ -60,9 +61,11 @@ const App: React.FC = () => {
       <Sidebar 
         activePage={currentPage} 
         onNavigate={setCurrentPage} 
-        onLogout={handleLogout} 
+        onLogout={handleLogout}
+        isCollapsed={isSidebarCollapsed}
+        onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
       />
-      <main className="flex-1 ml-64 overflow-auto">
+      <main className={`flex-1 ${isSidebarCollapsed ? 'ml-20' : 'ml-64'} overflow-auto transition-all duration-300`}>
         {currentPage === 'dashboard' && <Dashboard />}
         {currentPage === 'table-status' && <TableStatus />}
         {currentPage === 'occupied-tables' && <OccupiedTables />}

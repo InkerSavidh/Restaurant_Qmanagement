@@ -4,9 +4,11 @@ interface SidebarProps {
   activePage: string;
   onNavigate: (page: string) => void;
   onLogout: () => void;
+  isCollapsed: boolean;
+  onToggleCollapse: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ activePage, onNavigate, onLogout }) => {
+const Sidebar: React.FC<SidebarProps> = ({ activePage, onNavigate, onLogout, isCollapsed, onToggleCollapse }) => {
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: (
       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
@@ -32,15 +34,20 @@ const Sidebar: React.FC<SidebarProps> = ({ activePage, onNavigate, onLogout }) =
   ];
 
   return (
-    <aside className="w-64 bg-white border-r border-gray-100 flex flex-col h-screen fixed left-0 top-0 z-10 font-sans">
+    <aside className={`${isCollapsed ? 'w-20' : 'w-64'} bg-white border-r border-gray-100 flex flex-col h-screen fixed left-0 top-0 z-10 font-sans transition-all duration-300`}>
       {/* Logo */}
       <div className="p-6 flex items-center justify-between">
-        <div className="flex items-center gap-2">
-           <svg className="w-6 h-6 text-[#5D3FD3]" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
-           <span className="text-xl font-bold text-[#5D3FD3]">RestroFlow</span>
-        </div>
-        <button className="w-8 h-8 bg-[#5D3FD3] rounded-full flex items-center justify-center text-white">
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
+        {!isCollapsed && (
+          <div className="flex items-center gap-2">
+             <svg className="w-6 h-6 text-[#5D3FD3]" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
+             <span className="text-xl font-bold text-[#5D3FD3]">RestroFlow</span>
+          </div>
+        )}
+        <button 
+          onClick={onToggleCollapse}
+          className="w-8 h-8 bg-[#5D3FD3] rounded-full flex items-center justify-center text-white hover:bg-purple-700 transition-colors"
+        >
+          <svg className={`w-4 h-4 transition-transform ${isCollapsed ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
         </button>
       </div>
 
@@ -52,16 +59,17 @@ const Sidebar: React.FC<SidebarProps> = ({ activePage, onNavigate, onLogout }) =
             <button
               key={item.id}
               onClick={() => onNavigate(item.id)}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+              className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'} px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
                 isActive
                   ? 'bg-blue-50 text-[#0d6efd]'
                   : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
               }`}
+              title={isCollapsed ? item.label : ''}
             >
               <div className={`${isActive ? 'text-[#0d6efd]' : 'text-gray-400'}`}>
                 {item.icon}
               </div>
-              {item.label}
+              {!isCollapsed && item.label}
             </button>
           );
         })}
@@ -69,12 +77,13 @@ const Sidebar: React.FC<SidebarProps> = ({ activePage, onNavigate, onLogout }) =
         {/* Logout */}
         <button
           onClick={onLogout}
-          className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium text-red-500 hover:bg-gray-50 hover:text-gray-900 mt-8"
+          className={`w-full flex items-center ${isCollapsed ? 'justify-center' : 'gap-3'} px-4 py-3 rounded-lg text-sm font-medium text-red-500 hover:bg-gray-50 hover:text-gray-900 mt-8`}
+          title={isCollapsed ? 'Logout' : ''}
         >
           <div className="text-gray-400">
              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
           </div>
-          Logout
+          {!isCollapsed && 'Logout'}
         </button>
       </nav>
     </aside>
