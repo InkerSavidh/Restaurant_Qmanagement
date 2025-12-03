@@ -9,20 +9,16 @@ const CustomerHistory: React.FC = () => {
   useEffect(() => { fetchHistory(); }, []);
 
   const fetchHistory = async () => {
+    setLoading(true);
     try {
       const data = await getCustomerHistory(filters);
       console.log('Customer history data:', data);
       setHistory(data);
     } catch (error) {
       console.error('Failed to fetch customer history:', error);
-      // Mock data for demo
-      setHistory([
-        { id: '1', name: 'Dev', phone: '+919496397649', partySize: 10, tableSeated: 'T94', arrivalTime: '20 Nov 2025, 4:33 pm', seatedTime: '4:40 pm', departedTime: '4:17 pm', totalWait: 7, dineTime: 1417 },
-        { id: '2', name: 'Dev', phone: '+919496397649', partySize: 4, tableSeated: 'T33', arrivalTime: '20 Nov 2025, 4:12 pm', seatedTime: '4:12 pm', departedTime: '4:32 pm', totalWait: 0, dineTime: 20 },
-        { id: '3', name: 'Vineeth Wilson', phone: '+919995696021', partySize: 5, tableSeated: 'T4', arrivalTime: '20 Nov 2025, 4:12 pm', seatedTime: '4:12 pm', departedTime: '4:19 pm', totalWait: 0, dineTime: 1447 },
-        { id: '4', name: 'Manu Joseph', phone: '+917907613588', partySize: 2, tableSeated: 'T1', arrivalTime: '20 Nov 2025, 4:12 pm', seatedTime: '4:12 pm', departedTime: '4:40 pm', totalWait: 0, dineTime: 28 },
-        { id: '5', name: 'Amith Raman', phone: '+971507594471', partySize: 5, tableSeated: 'T38', arrivalTime: '20 Nov 2025, 4:12 pm', seatedTime: '4:12 pm', departedTime: '4:18 pm', totalWait: 0, dineTime: 1446 },
-      ]);
+      setHistory([]);
+    } finally {
+      setLoading(false);
     }
   };
 
