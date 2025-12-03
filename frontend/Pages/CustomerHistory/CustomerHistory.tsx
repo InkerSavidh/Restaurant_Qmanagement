@@ -8,6 +8,24 @@ const CustomerHistory: React.FC = () => {
 
   useEffect(() => { fetchHistory(); }, []);
 
+  // Format date as "20 Nov 2025, 4:33 pm"
+  const formatArrivalTime = (dateString: string) => {
+    if (!dateString) return '-';
+    const date = new Date(dateString);
+    const day = date.getDate();
+    const month = date.toLocaleString('en-US', { month: 'short' });
+    const year = date.getFullYear();
+    const time = date.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+    return `${day} ${month} ${year}, ${time}`;
+  };
+
+  // Format time as "4:00 pm"
+  const formatTime = (dateString: string) => {
+    if (!dateString) return '-';
+    const date = new Date(dateString);
+    return date.toLocaleString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+  };
+
   const fetchHistory = async () => {
     setLoading(true);
     try {
@@ -46,7 +64,7 @@ const CustomerHistory: React.FC = () => {
         ) : history.length === 0 ? (<div className="p-12 text-center text-gray-500 italic text-sm">No history records found.</div>
         ) : (<div className="divide-y divide-gray-50">{history.map((item) => (
           <div key={item.id} className="grid grid-cols-9 p-4 text-xs text-gray-700 items-center hover:bg-gray-50">
-            <div className="font-bold">{item.name}</div><div className="text-gray-500">{item.phone}</div><div className="pl-4">{item.partySize}</div><div className="pl-2">{item.tableSeated}</div><div className="text-gray-500">{item.arrivalTime}</div><div className="text-gray-500">{item.seatedTime}</div><div className="text-gray-500">{item.departedTime}</div><div className="pl-4">{item.totalWait}</div><div className="pl-4">{item.dineTime}</div>
+            <div className="font-bold">{item.name}</div><div className="text-gray-500">{item.phone}</div><div className="pl-4">{item.partySize}</div><div className="pl-2">{item.tableSeated}</div><div className="text-gray-500">{formatArrivalTime(item.arrivalTime)}</div><div className="text-gray-500">{formatTime(item.seatedTime)}</div><div className="text-gray-500">{formatTime(item.departedTime)}</div><div className="pl-4">{item.totalWait}</div><div className="pl-4">{item.dineTime}</div>
           </div>))}</div>)}
       </div>
     </div>

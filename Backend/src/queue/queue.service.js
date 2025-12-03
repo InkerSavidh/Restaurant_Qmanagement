@@ -74,19 +74,16 @@ export const addToQueue = async (data) => {
 };
 
 export const removeFromQueue = async (queueId) => {
-  console.log('📝 Service: Updating queue entry to CANCELLED:', queueId);
   const entry = await prisma.queueEntry.update({
     where: { id: queueId },
     data: { status: 'CANCELLED', cancelledAt: new Date() },
   });
   
-  console.log('📝 Service: Entry cancelled, updating positions for entries after position:', entry.position);
   // Update positions for remaining entries
   await prisma.queueEntry.updateMany({
     where: { status: 'WAITING', position: { gt: entry.position } },
     data: { position: { decrement: 1 } },
   });
   
-  console.log('✅ Service: Queue entry removed successfully');
   return entry;
 };
