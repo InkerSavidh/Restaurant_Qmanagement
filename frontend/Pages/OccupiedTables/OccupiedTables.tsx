@@ -16,7 +16,7 @@ const OccupiedTables: React.FC = () => {
 
   useEffect(() => {
     fetchSeatedParties();
-    const interval = setInterval(fetchSeatedParties, 500); // Refresh every 0.5 seconds
+    const interval = setInterval(fetchSeatedParties, 5000); // Refresh every 5 seconds
     return () => clearInterval(interval);
   }, []);
 
@@ -70,15 +70,18 @@ const OccupiedTables: React.FC = () => {
   const handleCheckout = async (sessionIds: string[], customerName: string) => {
     if (!confirm(`Checkout ${customerName} from ${sessionIds.length} table(s)?`)) return;
     
+    // Remove from UI immediately
     const previousParties = [...seatedParties];
     setSeatedParties(prev => prev.filter(p => !sessionIds.includes(p.id)));
     
     try {
-      // Checkout all sessions for this customer
-      await Promise.all(sessionIds.map(id => endSeatingSession(id)));
+      // Checkout only the first session - backend will handle all sessions for this customer
+      await endSeatingSession(sessionIds[0]);
+      // Refresh to sync with backend
       await fetchSeatedParties();
     } catch (error: any) {
       console.error('Failed to checkout:', error);
+      // Restore on error
       setSeatedParties(previousParties);
       alert(error.response?.data?.message || 'Failed to checkout customer');
     }
