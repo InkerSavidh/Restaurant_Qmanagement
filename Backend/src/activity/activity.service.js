@@ -24,13 +24,27 @@ export const getActivityLogs = async (filters = {}) => {
     take: 100,
   });
   
-  return logs.map(log => ({
-    id: log.id,
-    timestamp: log.createdAt.toISOString(),
-    user: log.user?.name || 'System',
-    badge: getBadgeFromAction(log.action),
-    details: log.details?.message || log.action,
-  }));
+  return logs.map(log => {
+    let detailsMessage = log.action.replace(/_/g, ' ');
+    
+    // Try to parse details if it's a JSON string
+    if (log.details) {
+      try {
+        const parsed = typeof log.details === 'string' ? JSON.parse(log.details) : log.details;
+        detailsMessage = parsed.message || detailsMessage;
+      } catch (e) {
+        detailsMessage = log.details;
+      }
+    }
+    
+    return {
+      id: log.id,
+      timestamp: log.createdAt.toISOString(),
+      user: log.user?.name || 'System',
+      badge: getBadgeFromAction(log.action),
+      details: detailsMessage,
+    };
+  });
 };
 
 const getBadgeFromAction = (action) => {

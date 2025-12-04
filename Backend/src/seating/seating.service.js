@@ -11,14 +11,36 @@ export const getActiveSeating = async () => {
     orderBy: { seatedAt: 'desc' },
   });
   
-  return sessions.map(s => ({
-    id: s.id,
-    tableNumber: `T${s.table.tableNumber}`,
-    customerName: s.queueEntry?.customer?.name || 'Walk-in',
-    partySize: s.partySize,
-    phone: s.queueEntry?.customer?.phoneNumber || 'N/A',
-    seatedAt: s.seatedAt.toISOString(),
-  }));
+  return sessions.map(s => {
+    // Try to get customer info from notes first (since queue entry is deleted after seating)
+    let customerName = 'Walk-in';
+    let customerPhone = 'N/A';
+    
+    if (s.notes) {
+      try {
+        const customerInfo = JSON.parse(s.notes);
+        customerName = customerInfo.customerName || 'Walk-in';
+        customerPhone = customerInfo.customerPhone || 'N/A';
+      } catch (e) {
+        // If notes parsing fails, try queue entry (for backward compatibility)
+        customerName = s.queueEntry?.customer?.name || 'Walk-in';
+        customerPhone = s.queueEntry?.customer?.phoneNumber || 'N/A';
+      }
+    } else {
+      // Fallback to queue entry if notes don't exist
+      customerName = s.queueEntry?.customer?.name || 'Walk-in';
+      customerPhone = s.queueEntry?.customer?.phoneNumber || 'N/A';
+    }
+    
+    return {
+      id: s.id,
+      tableNumber: `T${s.table.tableNumber}`,
+      customerName,
+      partySize: s.partySize,
+      phone: customerPhone,
+      seatedAt: s.seatedAt.toISOString(),
+    };
+  });
 };
 
 export const seatCustomer = async (queueEntryId, tableId, userId) => {
@@ -40,20 +62,28 @@ export const seatCustomer = async (queueEntryId, tableId, userId) => {
     throw new Error(`Table capacity (${table.capacity}) is less than party size (${queueEntry.partySize})`);
   }
   
-  // Create seating session
+  // Save customer info to notes before deleting queue entry
+  const customerInfo = JSON.stringify({
+    customerId: queueEntry.customer.id,
+    customerName: queueEntry.customer.name,
+    customerPhone: queueEntry.customer.phoneNumber,
+    entryTime: queueEntry.entryTime.toISOString(),
+  });
+  
+  // Create seating session with customer info in notes
   const session = await prisma.seatingSession.create({
     data: {
       tableId,
       queueEntryId,
       partySize: queueEntry.partySize,
       assignedById: userId,
+      notes: customerInfo,
     },
   });
   
-  // Update queue entry status
-  await prisma.queueEntry.update({
+  // Delete queue entry (customer is now seated)
+  await prisma.queueEntry.delete({
     where: { id: queueEntryId },
-    data: { status: 'SEATED', seatedAt: new Date() },
   });
   
   // Update table status
@@ -96,7 +126,15 @@ export const seatCustomerMultipleTables = async (queueEntryId, tableIds, userId)
     throw new Error(`Total capacity (${totalCapacity}) is less than party size (${queueEntry.partySize})`);
   }
   
-  // Create seating sessions for each table
+  // Save customer info to notes before deleting queue entry
+  const customerInfo = JSON.stringify({
+    customerId: queueEntry.customer.id,
+    customerName: queueEntry.customer.name,
+    customerPhone: queueEntry.customer.phoneNumber,
+    entryTime: queueEntry.entryTime.toISOString(),
+  });
+  
+  // Create seating sessions for each table with customer info in notes
   const sessions = await Promise.all(
     tableIds.map(tableId =>
       prisma.seatingSession.create({
@@ -105,15 +143,15 @@ export const seatCustomerMultipleTables = async (queueEntryId, tableIds, userId)
           queueEntryId,
           partySize: queueEntry.partySize,
           assignedById: userId,
+          notes: customerInfo,
         },
       })
     )
   );
   
-  // Update queue entry status
-  await prisma.queueEntry.update({
+  // Delete queue entry (customer is now seated)
+  await prisma.queueEntry.delete({
     where: { id: queueEntryId },
-    data: { status: 'SEATED', seatedAt: new Date() },
   });
   
   // Update all table statuses
@@ -132,16 +170,68 @@ export const seatCustomerMultipleTables = async (queueEntryId, tableIds, userId)
 };
 
 export const endSeatingSession = async (sessionId) => {
-  const session = await prisma.seatingSession.update({
+  // Get the session with all details
+  const session = await prisma.seatingSession.findUnique({
     where: { id: sessionId },
-    data: { endedAt: new Date() },
+    include: { queueEntry: { include: { customer: true } }, table: true },
+  });
+  
+  if (!session) throw new Error('Session not found');
+  
+  // Get customer info from notes (since queue entry was deleted)
+  let customerInfo = { customerName: 'Walk-in', customerPhone: 'N/A', entryTime: session.seatedAt, customerId: null };
+  if (session.notes) {
+    try {
+      customerInfo = JSON.parse(session.notes);
+    } catch (e) {
+      // Ignore parse errors
+    }
+  }
+  
+  // Find ALL sessions for this queue entry (multiple tables)
+  const allSessions = await prisma.seatingSession.findMany({
+    where: { queueEntryId: session.queueEntryId },
     include: { table: true },
   });
   
-  // Update table status
-  await prisma.table.update({
-    where: { id: session.tableId },
+  // Calculate times
+  const endTime = new Date();
+  const arrivalTime = new Date(customerInfo.entryTime);
+  const seatedTime = session.seatedAt;
+  const totalWait = Math.round((seatedTime - arrivalTime) / 60000);
+  const dineTime = Math.round((endTime - seatedTime) / 60000);
+  
+  // Combine table numbers
+  const tableNumbers = allSessions.map(s => `T${s.table.tableNumber}`).join(', ');
+  
+  // Save to customer history
+  if (customerInfo.customerId) {
+    await prisma.customerHistory.create({
+      data: {
+        customerId: customerInfo.customerId,
+        customerName: customerInfo.customerName,
+        customerPhone: customerInfo.customerPhone || null,
+        partySize: session.partySize,
+        tableNumbers,
+        arrivalTime,
+        seatedTime,
+        departedTime: endTime,
+        totalWaitTime: totalWait,
+        totalDiningTime: dineTime,
+      },
+    });
+  }
+  
+  // Update all table statuses to AVAILABLE
+  const tableIds = allSessions.map(s => s.tableId);
+  await prisma.table.updateMany({
+    where: { id: { in: tableIds } },
     data: { status: 'AVAILABLE' },
+  });
+  
+  // Delete all sessions for this customer
+  await prisma.seatingSession.deleteMany({
+    where: { queueEntryId: session.queueEntryId },
   });
   
   return session;

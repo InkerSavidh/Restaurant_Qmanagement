@@ -1,5 +1,6 @@
 // Backend/src/tables/tables.service.js
 import prisma from '../config/database.js';
+import { logAction } from '../activity/activity.service.js';
 
 /**
  * Get all tables
@@ -37,14 +38,26 @@ export const getTablesByFloor = async (floorId) => {
 /**
  * Update table status
  */
-export const updateTableStatus = async (tableId, status) => {
-  return await prisma.table.update({
+export const updateTableStatus = async (tableId, status, userId = null) => {
+  const table = await prisma.table.update({
     where: { id: tableId },
     data: { status },
     include: {
       floor: true,
     },
   });
+  
+  // Log the activity
+  const statusText = status === 'AVAILABLE' ? 'made available' : 'marked unavailable';
+  await logAction(
+    userId,
+    'table_status_change',
+    'TABLE',
+    tableId,
+    JSON.stringify({ message: `Table T${table.tableNumber} ${statusText}.` })
+  );
+  
+  return table;
 };
 
 /**

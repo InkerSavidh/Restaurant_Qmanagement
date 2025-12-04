@@ -14,14 +14,8 @@ const ActivityLog: React.FC = () => {
       const data = await getActivityLogs(filters);
       setLogs(data);
     } catch (error) {
-      setLogs([
-        { id: '1', timestamp: '21 Nov 2025, 10:49 am', user: 'Admin', badge: 'Cleared', details: 'Table T4 marked free (previously occupied by Vineeth Wilson ).' },
-        { id: '2', timestamp: '21 Nov 2025, 10:48 am', user: 'Admin', badge: 'Cleared', details: 'Table T38 marked free (previously occupied by Amith Raman).' },
-        { id: '3', timestamp: '21 Nov 2025, 10:47 am', user: 'Admin', badge: 'Cleared', details: 'Table T94 marked free (previously occupied by Dev).' },
-        { id: '4', timestamp: '20 Nov 2025, 11:32 am', user: 'Admin', badge: 'Blocked', details: 'Table T1 marked unavailable.' },
-        { id: '5', timestamp: '20 Nov 2025, 11:10 am', user: 'test', badge: 'Made Available', details: 'Table T94 made available.' },
-        { id: '6', timestamp: '20 Nov 2025, 11:10 am', user: 'test', badge: 'Cleared', details: 'Table T1 marked free (previously occupied by Manu Joseph).' },
-      ]);
+      console.error('Failed to fetch activity logs:', error);
+      setLogs([]);
     }
   };
 

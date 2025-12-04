@@ -1,5 +1,113 @@
 import React, { useState, useEffect } from 'react';
-import { getDashboardStats, getNextInQueue } from '../../api/analytics.api';
+import { getDashboardStats, getNextInQueue, getSeatedPartiesPerHour } from '../../api/analytics.api';
+
+// Seated Parties Area Chart Component
+const SeatedPartiesChart: React.FC = () => {
+  const [hourlyData, setHourlyData] = useState<{ hour: string; count: number }[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchHourlyData();
+    const interval = setInterval(fetchHourlyData, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const fetchHourlyData = async () => {
+    try {
+      const data = await getSeatedPartiesPerHour();
+      setHourlyData(data || []);
+    } catch (error) {
+      console.error('Error fetching hourly data:', error);
+      setHourlyData([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const maxCount = Math.max(...hourlyData.map(d => d.count), 1);
+  
+  const generateAreaPath = () => {
+    if (hourlyData.length === 0) return { linePath: '', areaPath: '', points: [] };
+    
+    const padding = 5;
+    const width = 100 - padding * 2;
+    const height = 75;
+    
+    const points = hourlyData.map((item, index) => {
+      const x = padding + (index / Math.max(hourlyData.length - 1, 1)) * width;
+      const y = 15 + height - (item.count / maxCount) * height;
+      return { x, y, count: item.count };
+    });
+    
+    let linePath = `M ${points[0].x} ${points[0].y}`;
+    
+    for (let i = 0; i < points.length - 1; i++) {
+      const current = points[i];
+      const next = points[i + 1];
+      const midX = (current.x + next.x) / 2;
+      linePath += ` Q ${midX} ${current.y}, ${midX} ${(current.y + next.y) / 2}`;
+      linePath += ` Q ${midX} ${next.y}, ${next.x} ${next.y}`;
+    }
+    
+    const lastPoint = points[points.length - 1];
+    const areaPath = `${linePath} L ${lastPoint.x} 90 L ${points[0].x} 90 Z`;
+    
+    return { linePath, areaPath, points };
+  };
+
+  const { linePath, areaPath, points } = generateAreaPath();
+
+  return (
+    <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
+      <h3 className="text-[#5D3FD3] font-semibold mb-4">Seated Parties Per Hour</h3>
+      {loading ? (
+        <div className="h-64 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#5D3FD3]"></div>
+        </div>
+      ) : hourlyData.length === 0 ? (
+        <div className="h-64 flex items-center justify-center text-gray-500 text-sm">
+          No data available
+        </div>
+      ) : (
+        <div className="h-64 w-full flex flex-col">
+          <div className="flex-1 w-full">
+            <svg viewBox="0 0 100 100" className="w-full h-full" preserveAspectRatio="xMidYMid meet">
+              <defs>
+                <linearGradient id="areaGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stopColor="#5D3FD3" stopOpacity="0.4" />
+                  <stop offset="100%" stopColor="#5D3FD3" stopOpacity="0.05" />
+                </linearGradient>
+              </defs>
+              
+              <line x1="5" y1="15" x2="5" y2="90" stroke="#e5e7eb" strokeWidth="0.3" />
+              <line x1="5" y1="90" x2="95" y2="90" stroke="#e5e7eb" strokeWidth="0.3" />
+              
+              <path d={areaPath} fill="url(#areaGradient)" />
+              <path d={linePath} fill="none" stroke="#5D3FD3" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              
+              {points.map((point, index) => (
+                <g key={index}>
+                  <circle cx={point.x} cy={point.y} r="1.5" fill="#5D3FD3" stroke="white" strokeWidth="0.5" />
+                  {point.count > 0 && (
+                    <text x={point.x} y={point.y - 3} textAnchor="middle" fontSize="3" fill="#374151" fontWeight="600">
+                      {point.count}
+                    </text>
+                  )}
+                </g>
+              ))}
+            </svg>
+          </div>
+          
+          <div className="flex justify-between px-2 mt-2">
+            {hourlyData.map((item, index) => (
+              <span key={index} className="text-[10px] text-gray-500">{item.hour}</span>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 interface DashboardStats {
   customersInQueue: number;
@@ -95,16 +203,8 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Chart Placeholder */}
-        <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-100 h-80">
-          <h3 className="text-[#5D3FD3] font-semibold mb-4">Seated Parties Per Hour</h3>
-          <div className="h-full w-full relative">
-            <div className="absolute left-0 top-0 bottom-8 w-px bg-gray-200"></div>
-            <div className="absolute left-0 right-0 bottom-8 h-px bg-gray-200"></div>
-            <span className="absolute left-[-20px] top-4 text-xs text-gray-400">1</span>
-            <span className="absolute left-[-20px] bottom-8 text-xs text-gray-400">0</span>
-          </div>
-        </div>
+        {/* Seated Parties Per Hour Chart */}
+        <SeatedPartiesChart />
       </div>
     </div>
   );

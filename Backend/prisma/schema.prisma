@@ -90,8 +90,8 @@ model QueueEntry {
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
   
-  customer       Customer        @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  seatingSession SeatingSession?
+  customer        Customer          @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  seatingSessions SeatingSession[]
   
   @@map("queue_entries")
 }
@@ -120,7 +120,7 @@ model Reservation {
 model SeatingSession {
   id            String    @id @default(uuid())
   tableId       String
-  queueEntryId  String?   @unique
+  queueEntryId  String?
   reservationId String?   @unique
   partySize     Int
   seatedAt      DateTime  @default(now())
@@ -166,4 +166,22 @@ model ActivityLog {
   user User? @relation(fields: [userId], references: [id])
   
   @@map("activity_logs")
+}
+
+// Customer History model
+model CustomerHistory {
+  id               String   @id @default(uuid())
+  customerId       String?
+  customerName     String
+  customerPhone    String?
+  partySize        Int
+  tableNumbers     String
+  arrivalTime      DateTime
+  seatedTime       DateTime
+  departedTime     DateTime
+  totalWaitTime    Int      // in minutes
+  totalDiningTime  Int      // in minutes
+  createdAt        DateTime @default(now())
+  
+  @@map("customer_history")
 }

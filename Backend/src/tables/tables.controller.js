@@ -39,7 +39,8 @@ export const updateStatus = async (req, res, next) => {
       return errorResponse(res, 'Status is required', null, 400);
     }
 
-    const table = await tablesService.updateTableStatus(id, status);
+    const userId = req.user?.id || null;
+    const table = await tablesService.updateTableStatus(id, status, userId);
     return successResponse(res, 'Table status updated successfully', table);
   } catch (error) {
     next(error);

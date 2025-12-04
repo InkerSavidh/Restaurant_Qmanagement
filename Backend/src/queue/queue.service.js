@@ -1,5 +1,6 @@
 // Backend/src/queue/queue.service.js
 import prisma from '../config/database.js';
+import { logAction } from '../activity/activity.service.js';
 
 export const getQueueList = async () => {
   const entries = await prisma.queueEntry.findMany({
@@ -70,11 +71,25 @@ export const addToQueue = async (data) => {
     include: { customer: true },
   });
   
+  // Log the activity
+  await logAction(
+    null,
+    'customer_added',
+    'QUEUE',
+    entry.id,
+    JSON.stringify({ message: `Customer ${name} added to queue (Party of ${partySize}).` })
+  );
+  
   return entry;
 };
 
 export const removeFromQueue = async (queueId) => {
-  const entry = await prisma.queueEntry.update({
+  const entry = await prisma.queueEntry.findUnique({
+    where: { id: queueId },
+    include: { customer: true },
+  });
+  
+  const updated = await prisma.queueEntry.update({
     where: { id: queueId },
     data: { status: 'CANCELLED', cancelledAt: new Date() },
   });
@@ -85,5 +100,14 @@ export const removeFromQueue = async (queueId) => {
     data: { position: { decrement: 1 } },
   });
   
-  return entry;
+  // Log the activity
+  await logAction(
+    null,
+    'customer_removed',
+    'QUEUE',
+    queueId,
+    JSON.stringify({ message: `Customer ${entry.customer.name} removed from queue.` })
+  );
+  
+  return updated;
 };
