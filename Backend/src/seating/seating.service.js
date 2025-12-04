@@ -11,33 +11,14 @@ export const getActiveSeating = async () => {
     orderBy: { seatedAt: 'desc' },
   });
   
-  return sessions.map(s => {
-    // Try to get customer info from notes if queue entry was deleted
-    let customerName = 'Walk-in';
-    let phone = 'N/A';
-    
-    if (s.queueEntry?.customer) {
-      customerName = s.queueEntry.customer.name;
-      phone = s.queueEntry.customer.phoneNumber || 'N/A';
-    } else if (s.notes) {
-      try {
-        const customerInfo = JSON.parse(s.notes);
-        customerName = customerInfo.customerName || 'Walk-in';
-        phone = customerInfo.customerPhone || 'N/A';
-      } catch (e) {
-        // Ignore parse errors
-      }
-    }
-    
-    return {
-      id: s.id,
-      tableNumber: `T${s.table.tableNumber}`,
-      customerName,
-      partySize: s.partySize,
-      phone,
-      seatedAt: s.seatedAt.toISOString(),
-    };
-  });
+  return sessions.map(s => ({
+    id: s.id,
+    tableNumber: `T${s.table.tableNumber}`,
+    customerName: s.queueEntry?.customer?.name || 'Walk-in',
+    partySize: s.partySize,
+    phone: s.queueEntry?.customer?.phoneNumber || 'N/A',
+    seatedAt: s.seatedAt.toISOString(),
+  }));
 };
 
 export const seatCustomer = async (queueEntryId, tableId, userId) => {
@@ -59,28 +40,20 @@ export const seatCustomer = async (queueEntryId, tableId, userId) => {
     throw new Error(`Table capacity (${table.capacity}) is less than party size (${queueEntry.partySize})`);
   }
   
-  // Store customer info before deleting queue entry
-  const customerInfo = {
-    customerId: queueEntry.customerId,
-    customerName: queueEntry.customer.name,
-    customerPhone: queueEntry.customer.phoneNumber,
-    entryTime: queueEntry.entryTime,
-  };
-  
-  // Create seating session with customer info
+  // Create seating session
   const session = await prisma.seatingSession.create({
     data: {
       tableId,
       queueEntryId,
       partySize: queueEntry.partySize,
       assignedById: userId,
-      notes: JSON.stringify(customerInfo), // Store customer info in notes
     },
   });
   
-  // Delete queue entry (customer is now seated)
-  await prisma.queueEntry.delete({
+  // Update queue entry status
+  await prisma.queueEntry.update({
     where: { id: queueEntryId },
+    data: { status: 'SEATED', seatedAt: new Date() },
   });
   
   // Update table status
@@ -123,15 +96,7 @@ export const seatCustomerMultipleTables = async (queueEntryId, tableIds, userId)
     throw new Error(`Total capacity (${totalCapacity}) is less than party size (${queueEntry.partySize})`);
   }
   
-  // Store customer info before deleting queue entry
-  const customerInfo = {
-    customerId: queueEntry.customerId,
-    customerName: queueEntry.customer.name,
-    customerPhone: queueEntry.customer.phoneNumber,
-    entryTime: queueEntry.entryTime,
-  };
-  
-  // Create seating sessions for each table with customer info
+  // Create seating sessions for each table
   const sessions = await Promise.all(
     tableIds.map(tableId =>
       prisma.seatingSession.create({
@@ -140,15 +105,15 @@ export const seatCustomerMultipleTables = async (queueEntryId, tableIds, userId)
           queueEntryId,
           partySize: queueEntry.partySize,
           assignedById: userId,
-          notes: JSON.stringify(customerInfo), // Store customer info in notes
         },
       })
     )
   );
   
-  // Delete queue entry (customer is now seated)
-  await prisma.queueEntry.delete({
+  // Update queue entry status
+  await prisma.queueEntry.update({
     where: { id: queueEntryId },
+    data: { status: 'SEATED', seatedAt: new Date() },
   });
   
   // Update all table statuses
@@ -167,71 +132,16 @@ export const seatCustomerMultipleTables = async (queueEntryId, tableIds, userId)
 };
 
 export const endSeatingSession = async (sessionId) => {
-  // Get the session to find the queue entry
-  const session = await prisma.seatingSession.findUnique({
+  const session = await prisma.seatingSession.update({
     where: { id: sessionId },
-    include: { queueEntry: true, table: true },
-  });
-  
-  if (!session) throw new Error('Session not found');
-  
-  // Find ALL sessions for this queue entry (in case of multiple tables)
-  const allSessions = await prisma.seatingSession.findMany({
-    where: {
-      queueEntryId: session.queueEntryId,
-      endedAt: null,
-    },
+    data: { endedAt: new Date() },
     include: { table: true },
   });
   
-  // Get customer info from notes
-  let customerInfo = { customerName: 'Walk-in', customerPhone: 'N/A', entryTime: session.seatedAt };
-  if (session.notes) {
-    try {
-      customerInfo = JSON.parse(session.notes);
-    } catch (e) {
-      // Ignore parse errors
-    }
-  }
-  
-  // Calculate times
-  const endTime = new Date();
-  const arrivalTime = new Date(customerInfo.entryTime);
-  const seatedTime = session.seatedAt;
-  const totalWait = Math.round((seatedTime - arrivalTime) / 60000);
-  const dineTime = Math.round((endTime - seatedTime) / 60000);
-  
-  // Combine table numbers
-  const tableNumbers = allSessions.map(s => `T${s.table.tableNumber}`).join(', ');
-  
-  // Create customer history record
-  await prisma.customerHistory.create({
-    data: {
-      customerId: customerInfo.customerId,
-      customerName: customerInfo.customerName,
-      customerPhone: customerInfo.customerPhone || null,
-      partySize: session.partySize,
-      tableNumbers,
-      arrivalTime,
-      seatedTime,
-      departedTime: endTime,
-      totalWaitTime: totalWait,
-      totalDiningTime: dineTime,
-    },
-  });
-  
-  // Update all table statuses to AVAILABLE
-  const tableIds = allSessions.map(s => s.tableId);
-  await prisma.table.updateMany({
-    where: { id: { in: tableIds } },
+  // Update table status
+  await prisma.table.update({
+    where: { id: session.tableId },
     data: { status: 'AVAILABLE' },
-  });
-  
-  // Delete all sessions for this customer
-  await prisma.seatingSession.deleteMany({
-    where: {
-      queueEntryId: session.queueEntryId,
-    },
   });
   
   return session;
