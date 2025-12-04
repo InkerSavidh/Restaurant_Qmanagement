@@ -138,7 +138,7 @@ const Dashboard: React.FC = () => {
 
   useEffect(() => {
     fetchDashboardData();
-    const interval = setInterval(fetchDashboardData, 30000); // Refresh every 30s
+    const interval = setInterval(fetchDashboardData, 1000); // Refresh every 1 second
     return () => clearInterval(interval);
   }, []);
 

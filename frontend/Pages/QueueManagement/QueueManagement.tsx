@@ -25,7 +25,7 @@ const QueueManagement: React.FC = () => {
   useEffect(() => {
     fetchQueue();
     fetchTables();
-    const interval = setInterval(fetchQueue, 15000);
+    const interval = setInterval(fetchQueue, 500); // Refresh every 0.5 seconds
     return () => clearInterval(interval);
   }, []);
 

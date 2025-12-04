@@ -16,7 +16,7 @@ const OccupiedTables: React.FC = () => {
 
   useEffect(() => {
     fetchSeatedParties();
-    const interval = setInterval(fetchSeatedParties, 30000);
+    const interval = setInterval(fetchSeatedParties, 500); // Refresh every 0.5 seconds
     return () => clearInterval(interval);
   }, []);
 
