@@ -68,8 +68,8 @@ model Customer {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   
-  queueEntries QueueEntry[]
-  reservations Reservation[]
+  queueEntries    QueueEntry[]
+  customerHistory CustomerHistory[]
   
   @@map("customers")
 }
@@ -96,32 +96,11 @@ model QueueEntry {
   @@map("queue_entries")
 }
 
-// Reservation model
-model Reservation {
-  id              String   @id @default(uuid())
-  customerId      String
-  partySize       Int
-  reservationTime DateTime
-  status          String   @default("CONFIRMED") // CONFIRMED, REMINDED, ARRIVED, SEATED, CANCELLED, NO_SHOW
-  notes           String?
-  reminderSentAt  DateTime?
-  arrivedAt       DateTime?
-  cancelledAt     DateTime?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  
-  customer       Customer        @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  seatingSession SeatingSession?
-  
-  @@map("reservations")
-}
-
 // Seating session model
 model SeatingSession {
   id            String    @id @default(uuid())
   tableId       String
   queueEntryId  String?
-  reservationId String?   @unique
   partySize     Int
   seatedAt      DateTime  @default(now())
   endedAt       DateTime?
@@ -132,7 +111,6 @@ model SeatingSession {
   
   table       Table        @relation(fields: [tableId], references: [id], onDelete: Cascade)
   queueEntry  QueueEntry?  @relation(fields: [queueEntryId], references: [id])
-  reservation Reservation? @relation(fields: [reservationId], references: [id])
   assignedBy  User         @relation("AssignedBy", fields: [assignedById], references: [id])
   
   @@map("seating_sessions")
@@ -149,6 +127,26 @@ model Waiter {
   updatedAt   DateTime @updatedAt
   
   @@map("waiters")
+}
+
+// Customer History model
+model CustomerHistory {
+  id              String   @id @default(uuid())
+  customerId      String
+  customerName    String
+  customerPhone   String?
+  partySize       Int
+  tableNumbers    String
+  arrivalTime     DateTime
+  seatedTime      DateTime
+  departedTime    DateTime
+  totalWaitTime   Int      // in minutes
+  totalDiningTime Int      // in minutes
+  createdAt       DateTime @default(now())
+  
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  
+  @@map("customer_history")
 }
 
 // Activity log model
