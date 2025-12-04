@@ -112,6 +112,10 @@ const QueueManagement: React.FC = () => {
       return;
     }
 
+    // Optimistically update UI - remove customer from queue
+    const previousQueue = [...queue];
+    setQueue(prev => prev.filter(q => q.id !== selectedCustomer));
+    
     try {
       await axiosInstance.post('/seating/seat-multiple', { 
         queueEntryId: selectedCustomer, 
@@ -123,6 +127,8 @@ const QueueManagement: React.FC = () => {
       await fetchTables();
     } catch (error: any) { 
       console.error('Failed to seat customer:', error);
+      // Restore queue on error
+      setQueue(previousQueue);
       alert(error.response?.data?.message || 'Failed to seat customer');
     }
   };
