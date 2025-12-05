@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { getTablesByFloor, updateTableStatus, getFloors, createTable, deleteTable } from '../../api/tables.api';
+import { useSocket } from '../../hooks/useSocket';
+import { ConnectionStatus } from '../../Components/ConnectionStatus';
 
 interface Table {
   id: string;
@@ -26,13 +28,33 @@ const TableStatus: React.FC = () => {
   const [newTableCapacity, setNewTableCapacity] = useState(4);
   const [editingTable, setEditingTable] = useState<Table | null>(null);
 
-  useEffect(() => {
-    fetchFloors();
-  }, []);
+  const sortTablesByNumber = (tables: Table[]) => {
+    return tables.sort((a, b) => {
+      const numA = parseInt(a.tableNumber) || 0;
+      const numB = parseInt(b.tableNumber) || 0;
+      return numA - numB;
+    });
+  };
 
-  useEffect(() => {
-    if (activeFloor) fetchTables();
-  }, [activeFloor]);
+  const generateMockTables = () => {
+    const startNum = activeFloor === '1' ? 1 : 49;
+    const mockTables: Table[] = Array.from({ length: 48 }, (_, i) => ({
+      id: `table-${startNum + i}`,
+      tableNumber: `T${startNum + i}`,
+      capacity: (startNum + i) % 3 === 0 ? 6 : (startNum + i) % 2 === 0 ? 4 : 2,
+      status: 'AVAILABLE',
+    }));
+    setTables(mockTables);
+  };
+
+  const fetchTables = async () => {
+    try {
+      const data = await getTablesByFloor(activeFloor);
+      setTables(sortTablesByNumber(data));
+    } catch (error) {
+      generateMockTables();
+    }
+  };
 
   const fetchFloors = async () => {
     try {
@@ -46,33 +68,20 @@ const TableStatus: React.FC = () => {
     }
   };
 
-  const sortTablesByNumber = (tables: Table[]) => {
-    return tables.sort((a, b) => {
-      const numA = parseInt(a.tableNumber) || 0;
-      const numB = parseInt(b.tableNumber) || 0;
-      return numA - numB;
-    });
-  };
+  useEffect(() => {
+    fetchFloors();
+  }, []);
 
-  const fetchTables = async () => {
-    try {
-      const data = await getTablesByFloor(activeFloor);
-      setTables(sortTablesByNumber(data));
-    } catch (error) {
-      generateMockTables();
-    }
-  };
+  useEffect(() => {
+    if (activeFloor) fetchTables();
+  }, [activeFloor]);
 
-  const generateMockTables = () => {
-    const startNum = activeFloor === '1' ? 1 : 49;
-    const mockTables: Table[] = Array.from({ length: 48 }, (_, i) => ({
-      id: `table-${startNum + i}`,
-      tableNumber: `T${startNum + i}`,
-      capacity: (startNum + i) % 3 === 0 ? 6 : (startNum + i) % 2 === 0 ? 4 : 2,
-      status: 'AVAILABLE',
-    }));
-    setTables(mockTables);
-  };
+  // WebSocket real-time updates
+  const { connectionStatus, error } = useSocket({
+    'table:updated': fetchTables,
+    'seating:created': fetchTables,
+    'seating:ended': fetchTables,
+  });
 
   const handleStatusChange = async (tableId: string, currentStatus: string) => {
     const newStatus = currentStatus === 'AVAILABLE' ? 'UNAVAILABLE' : 'AVAILABLE';
@@ -129,6 +138,7 @@ const TableStatus: React.FC = () => {
 
   return (
     <div className="p-8">
+      <ConnectionStatus status={connectionStatus} error={error} />
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold text-gray-900">Table Status</h2>
         <button 

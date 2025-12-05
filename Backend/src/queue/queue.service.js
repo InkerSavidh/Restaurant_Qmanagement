@@ -1,6 +1,7 @@
 // Backend/src/queue/queue.service.js
 import prisma from '../config/database.js';
 import { logAction } from '../activity/activity.service.js';
+import { getIO } from '../config/socket.js';
 
 export const getQueueList = async () => {
   const entries = await prisma.queueEntry.findMany({
@@ -80,6 +81,14 @@ export const addToQueue = async (data) => {
     JSON.stringify({ message: `Customer ${name} added to queue (Party of ${partySize}).` })
   );
   
+  // Emit WebSocket event
+  try {
+    const io = getIO();
+    io.emit('queue:updated');
+  } catch (error) {
+    console.error('WebSocket emit error:', error);
+  }
+  
   return entry;
 };
 
@@ -108,6 +117,14 @@ export const removeFromQueue = async (queueId) => {
     queueId,
     JSON.stringify({ message: `Customer ${entry.customer.name} removed from queue.` })
   );
+  
+  // Emit WebSocket event
+  try {
+    const io = getIO();
+    io.emit('queue:updated');
+  } catch (error) {
+    console.error('WebSocket emit error:', error);
+  }
   
   return updated;
 };

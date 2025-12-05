@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { getActiveSeating, endSeatingSession, SeatedParty } from '../../api/seating.api';
+import { useSocket } from '../../hooks/useSocket';
+import { ConnectionStatus } from '../../Components/ConnectionStatus';
 
 interface GroupedParty {
   customerName: string;
@@ -14,12 +16,6 @@ const OccupiedTables: React.FC = () => {
   const [seatedParties, setSeatedParties] = useState<SeatedParty[]>([]);
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    fetchSeatedParties();
-    const interval = setInterval(fetchSeatedParties, 5000); // Refresh every 5 seconds
-    return () => clearInterval(interval);
-  }, []);
-
   const fetchSeatedParties = async () => {
     try {
       const data = await getActiveSeating();
@@ -29,6 +25,16 @@ const OccupiedTables: React.FC = () => {
       setSeatedParties([]);
     }
   };
+
+  useEffect(() => {
+    fetchSeatedParties();
+  }, []);
+
+  // WebSocket real-time updates
+  const { connectionStatus, error } = useSocket({
+    'seating:created': fetchSeatedParties,
+    'seating:ended': fetchSeatedParties,
+  });
 
   // Group parties by customer name and phone (within 5 minutes)
   const groupedParties: GroupedParty[] = seatedParties.reduce((acc: GroupedParty[], party) => {
@@ -94,6 +100,7 @@ const OccupiedTables: React.FC = () => {
 
   return (
     <div className="p-8">
+      <ConnectionStatus status={connectionStatus} error={error} />
       <h2 className="text-2xl font-bold text-gray-900 mb-6">Seated Parties ({groupedParties.length})</h2>
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">

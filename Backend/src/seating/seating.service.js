@@ -1,5 +1,6 @@
 // Backend/src/seating/seating.service.js
 import prisma from '../config/database.js';
+import { getIO } from '../config/socket.js';
 
 export const getActiveSeating = async () => {
   const sessions = await prisma.seatingSession.findMany({
@@ -98,6 +99,16 @@ export const seatCustomer = async (queueEntryId, tableId, userId) => {
     data: { position: { decrement: 1 } },
   });
   
+  // Emit WebSocket events
+  try {
+    const io = getIO();
+    io.emit('seating:created', { sessionId: session.id });
+    io.emit('table:updated', { tableId });
+    io.emit('queue:updated');
+  } catch (error) {
+    console.error('WebSocket emit error:', error);
+  }
+  
   return session;
 };
 
@@ -166,17 +177,37 @@ export const seatCustomerMultipleTables = async (queueEntryId, tableIds, userId)
     data: { position: { decrement: 1 } },
   });
   
+  // Emit WebSocket events
+  try {
+    const io = getIO();
+    io.emit('seating:created', { sessionIds: sessions.map(s => s.id) });
+    tableIds.forEach(tableId => io.emit('table:updated', { tableId }));
+    io.emit('queue:updated');
+  } catch (error) {
+    console.error('WebSocket emit error:', error);
+  }
+  
   return sessions;
 };
 
 export const endSeatingSession = async (sessionId) => {
+  console.log('🔍 Attempting to end session:', sessionId);
+  
   // Get the session with all details
   const session = await prisma.seatingSession.findUnique({
     where: { id: sessionId },
     include: { queueEntry: { include: { customer: true } }, table: true },
   });
   
-  if (!session) throw new Error('Session not found');
+  if (!session) {
+    console.error('❌ Session not found:', sessionId);
+    // Check if there are any sessions at all
+    const allSessions = await prisma.seatingSession.findMany({ take: 5 });
+    console.log('📋 Available sessions (first 5):', allSessions.map(s => ({ id: s.id, tableId: s.tableId })));
+    throw new Error('Session not found');
+  }
+  
+  console.log('✅ Session found:', { id: session.id, tableId: session.tableId, queueEntryId: session.queueEntryId });
   
   // Get customer info from notes (since queue entry was deleted)
   let customerInfo = { customerName: 'Walk-in', customerPhone: 'N/A', entryTime: session.seatedAt, customerId: null };
@@ -188,9 +219,13 @@ export const endSeatingSession = async (sessionId) => {
     }
   }
   
-  // Find ALL sessions for this queue entry (multiple tables)
+  // Find ALL sessions for this SPECIFIC seating (same queueEntryId AND same seatedAt time)
+  // This ensures we only checkout tables from the same seating event, not different customers
   const allSessions = await prisma.seatingSession.findMany({
-    where: { queueEntryId: session.queueEntryId },
+    where: { 
+      queueEntryId: session.queueEntryId,
+      seatedAt: session.seatedAt, // IMPORTANT: Only sessions from the same seating event
+    },
     include: { table: true },
   });
   
@@ -204,23 +239,21 @@ export const endSeatingSession = async (sessionId) => {
   // Combine table numbers
   const tableNumbers = allSessions.map(s => `T${s.table.tableNumber}`).join(', ');
   
-  // Save to customer history
-  if (customerInfo.customerId) {
-    await prisma.customerHistory.create({
-      data: {
-        customerId: customerInfo.customerId,
-        customerName: customerInfo.customerName,
-        customerPhone: customerInfo.customerPhone || null,
-        partySize: session.partySize,
-        tableNumbers,
-        arrivalTime,
-        seatedTime,
-        departedTime: endTime,
-        totalWaitTime: totalWait,
-        totalDiningTime: dineTime,
-      },
-    });
-  }
+  // Save to customer history (always save, even if customerId is null)
+  await prisma.customerHistory.create({
+    data: {
+      customerId: customerInfo.customerId,
+      customerName: customerInfo.customerName,
+      customerPhone: customerInfo.customerPhone || null,
+      partySize: session.partySize,
+      tableNumbers,
+      arrivalTime,
+      seatedTime,
+      departedTime: endTime,
+      totalWaitTime: totalWait,
+      totalDiningTime: dineTime,
+    },
+  });
   
   // Update all table statuses to AVAILABLE
   const tableIds = allSessions.map(s => s.tableId);
@@ -229,10 +262,22 @@ export const endSeatingSession = async (sessionId) => {
     data: { status: 'AVAILABLE' },
   });
   
-  // Delete all sessions for this customer
+  // Delete only the sessions from this specific seating event
   await prisma.seatingSession.deleteMany({
-    where: { queueEntryId: session.queueEntryId },
+    where: { 
+      queueEntryId: session.queueEntryId,
+      seatedAt: session.seatedAt, // IMPORTANT: Only delete sessions from the same seating event
+    },
   });
+  
+  // Emit WebSocket events
+  try {
+    const io = getIO();
+    io.emit('seating:ended', { sessionId });
+    tableIds.forEach(tableId => io.emit('table:updated', { tableId }));
+  } catch (error) {
+    console.error('WebSocket emit error:', error);
+  }
   
   return session;
 };

@@ -1,16 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { getDashboardStats, getNextInQueue, getSeatedPartiesPerHour } from '../../api/analytics.api';
+import { useSocket } from '../../hooks/useSocket';
+import { ConnectionStatus } from '../../Components/ConnectionStatus';
 
 // Seated Parties Area Chart Component
 const SeatedPartiesChart: React.FC = () => {
   const [hourlyData, setHourlyData] = useState<{ hour: string; count: number }[]>([]);
   const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetchHourlyData();
-    const interval = setInterval(fetchHourlyData, 60000);
-    return () => clearInterval(interval);
-  }, []);
 
   const fetchHourlyData = async () => {
     try {
@@ -23,6 +19,16 @@ const SeatedPartiesChart: React.FC = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchHourlyData();
+  }, []);
+
+  // WebSocket real-time updates
+  const { connectionStatus, error } = useSocket({
+    'seating:created': fetchHourlyData,
+    'seating:ended': fetchHourlyData,
+  });
 
   const maxCount = Math.max(...hourlyData.map(d => d.count), 1);
   
@@ -134,13 +140,6 @@ const Dashboard: React.FC = () => {
     partiesSeatedToday: 0,
   });
   const [nextCustomer, setNextCustomer] = useState<NextCustomer | null>(null);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    fetchDashboardData();
-    const interval = setInterval(fetchDashboardData, 30000); // Refresh every 30s
-    return () => clearInterval(interval);
-  }, []);
 
   const fetchDashboardData = async () => {
     try {
@@ -155,6 +154,18 @@ const Dashboard: React.FC = () => {
     }
   };
 
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  // WebSocket real-time updates
+  const { connectionStatus, error } = useSocket({
+    'queue:updated': fetchDashboardData,
+    'seating:created': fetchDashboardData,
+    'seating:ended': fetchDashboardData,
+    'table:updated': fetchDashboardData,
+  });
+
   const statCards = [
     { icon: 'bg-blue-500', label: 'Customers in Queue', value: stats.customersInQueue.toString() },
     { icon: 'bg-red-500', label: 'Occupied Tables', value: stats.occupiedTables.toString() },
@@ -166,6 +177,7 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="p-8">
+      <ConnectionStatus status={connectionStatus} error={error} />
       <h2 className="text-2xl font-bold text-gray-900 mb-6">Dashboard Overview</h2>
 
       {/* Stats Cards */}

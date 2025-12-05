@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { getQueue, addToQueue, removeFromQueue, runAllocator, QueueEntry } from '../../api/queue.api';
 import { getAllTables } from '../../api/tables.api';
 import axiosInstance from '../../api/axiosInstance';
+import { useSocket } from '../../hooks/useSocket';
+import { ConnectionStatus } from '../../Components/ConnectionStatus';
 
 interface Table {
   id: string;
@@ -22,13 +24,6 @@ const QueueManagement: React.FC = () => {
   const [selectedCustomer, setSelectedCustomer] = useState('');
   const [selectedTables, setSelectedTables] = useState<string[]>([]);
 
-  useEffect(() => {
-    fetchQueue();
-    fetchTables();
-    const interval = setInterval(fetchQueue, 15000);
-    return () => clearInterval(interval);
-  }, []);
-
   const fetchTables = async () => {
     try {
       const data = await getAllTables();
@@ -47,6 +42,17 @@ const QueueManagement: React.FC = () => {
       setQueue([]);
     }
   };
+
+  useEffect(() => {
+    fetchQueue();
+    fetchTables();
+  }, []);
+
+  // WebSocket real-time updates
+  const { connectionStatus, error } = useSocket({
+    'queue:updated': fetchQueue,
+    'table:updated': fetchTables,
+  });
 
   const handleAddCustomer = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -168,6 +174,7 @@ const QueueManagement: React.FC = () => {
 
   return (
     <div className="p-8">
+      <ConnectionStatus status={connectionStatus} error={error} />
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold text-gray-900">Queue Management</h2>
         <div className="flex items-center gap-4">
