@@ -180,8 +180,13 @@ const QueueManagement: React.FC = () => {
         <h2 className="text-2xl font-bold text-gray-900">Queue Management</h2>
         <div className="flex items-center gap-4">
           <button 
-            onClick={handleRunAllocator} 
-            className="bg-[#5D3FD3] hover:bg-purple-700 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2 transition-colors shadow-sm"
+            onClick={handleRunAllocator}
+            disabled={queue.length === 0}
+            className={`px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2 transition-colors shadow-sm ${
+              queue.length === 0
+                ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                : 'bg-[#5D3FD3] hover:bg-purple-700 text-white'
+            }`}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
