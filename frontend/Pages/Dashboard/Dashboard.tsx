@@ -171,17 +171,17 @@ const Dashboard: React.FC = () => {
       <div className="p-4 sm:p-6 lg:p-8">
         <div className="h-6 sm:h-8 w-48 sm:w-64 bg-gray-200 rounded animate-pulse mb-4 sm:mb-6"></div>
 
-        {/* Stats Cards Skeleton */}
-        <div className="bg-white rounded-lg p-4 sm:p-6 shadow-sm border border-gray-100 mb-4 sm:mb-6">
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4 sm:gap-6">
-            {[1, 2, 3, 4, 5, 6].map((i) => (
-              <div key={i} className="flex flex-col items-start">
-                <div className="w-10 h-10 rounded-full bg-gray-200 animate-pulse mb-4"></div>
-                <div className="h-9 w-20 bg-gray-200 rounded animate-pulse mb-1"></div>
-                <div className="h-4 w-32 bg-gray-200 rounded animate-pulse"></div>
+        {/* Stats Cards Skeleton - Individual Cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3 sm:gap-4 mb-4 sm:mb-6">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <div key={i} className="bg-white rounded-lg p-4 sm:p-5 shadow-sm border border-gray-100">
+              <div className="flex flex-col items-start">
+                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gray-200 animate-pulse mb-3 sm:mb-4"></div>
+                <div className="h-8 sm:h-9 w-16 sm:w-20 bg-gray-200 rounded animate-pulse mb-1"></div>
+                <div className="h-3 sm:h-4 w-24 sm:w-32 bg-gray-200 rounded animate-pulse"></div>
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
@@ -208,11 +208,11 @@ const Dashboard: React.FC = () => {
     <div className="p-4 sm:p-6 lg:p-8">
       <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 sm:mb-6">Dashboard Overview</h2>
 
-      {/* Stats Cards */}
-      <div className="bg-white rounded-lg p-4 sm:p-6 shadow-sm border border-gray-100 mb-4 sm:mb-6">
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4 sm:gap-6">
-          {statCards.map((stat, i) => (
-            <div key={i} className="flex flex-col items-start">
+      {/* Stats Cards - Individual Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3 sm:gap-4 mb-4 sm:mb-6">
+        {statCards.map((stat, i) => (
+          <div key={i} className="bg-white rounded-lg p-4 sm:p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+            <div className="flex flex-col items-start">
               <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full ${stat.icon} flex items-center justify-center text-white mb-3 sm:mb-4`}>
                 <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -221,8 +221,8 @@ const Dashboard: React.FC = () => {
               <div className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">{stat.value}</div>
               <div className="text-xs sm:text-sm text-gray-500">{stat.label}</div>
             </div>
-          ))}
-        </div>
+          </div>
+        ))}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
