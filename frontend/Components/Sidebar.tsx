@@ -34,7 +34,19 @@ const Sidebar: React.FC<SidebarProps> = ({ activePage, onNavigate, onLogout, isC
   ];
 
   return (
-    <aside className={`${isCollapsed ? 'w-20' : 'w-64'} bg-white border-r border-gray-100 flex flex-col h-screen fixed left-0 top-0 z-10 font-sans transition-all duration-300`}>
+    <>
+      {/* Mobile Overlay */}
+      {!isCollapsed && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-20 lg:hidden"
+          onClick={onToggleCollapse}
+        />
+      )}
+      
+      {/* Sidebar */}
+      <aside className={`${
+        isCollapsed ? '-translate-x-full lg:translate-x-0 lg:w-20' : 'translate-x-0 w-64'
+      } bg-white border-r border-gray-100 flex flex-col h-screen fixed left-0 top-0 z-30 font-sans transition-all duration-300`}>
       {/* Logo */}
       <div className="p-6 flex items-center justify-between">
         {!isCollapsed && (
@@ -87,6 +99,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activePage, onNavigate, onLogout, isC
         </button>
       </nav>
     </aside>
+    </>
   );
 };
 

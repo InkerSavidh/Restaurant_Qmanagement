@@ -101,57 +101,63 @@ const OccupiedTables: React.FC = () => {
   };
 
   return (
-    <div className="p-8">
-      <h2 className="text-2xl font-bold text-gray-900 mb-6">Seated Parties ({loading ? '...' : groupedParties.length})</h2>
+    <div className="p-4 sm:p-6 lg:p-8">
+      <ConnectionStatus status={connectionStatus} error={error} />
+      <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 sm:mb-6">Seated Parties ({loading ? '...' : groupedParties.length})</h2>
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
-        <div className="grid grid-cols-6 p-4 border-b border-gray-100 bg-white text-xs font-bold text-gray-500 uppercase tracking-wider">
-          <div>Table</div>
-          <div>Customer Name</div>
-          <div>Party Size</div>
-          <div>Phone</div>
-          <div>Seated At</div>
-          <div>Actions</div>
-        </div>
+        {/* Mobile: Scrollable table */}
+        <div className="overflow-x-auto">
+          <div className="min-w-[600px]">
+            <div className="grid grid-cols-6 p-3 sm:p-4 border-b border-gray-100 bg-white text-[10px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider">
+              <div>Table</div>
+              <div>Customer Name</div>
+              <div>Party Size</div>
+              <div>Phone</div>
+              <div>Seated At</div>
+              <div>Actions</div>
+            </div>
 
-        {loading ? (
-          <div className="divide-y divide-gray-50">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="grid grid-cols-6 p-4 items-center animate-pulse">
-                <div className="h-4 bg-gray-200 rounded w-16"></div>
-                <div className="h-4 bg-gray-200 rounded w-32"></div>
-                <div className="h-4 bg-gray-200 rounded w-8"></div>
-                <div className="h-4 bg-gray-200 rounded w-24"></div>
-                <div className="h-4 bg-gray-200 rounded w-20"></div>
-                <div className="h-8 bg-gray-200 rounded w-20"></div>
+            {loading ? (
+              <div className="divide-y divide-gray-50">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className="grid grid-cols-6 p-3 sm:p-4 items-center animate-pulse">
+                    <div className="h-3 sm:h-4 bg-gray-200 rounded w-12 sm:w-16"></div>
+                    <div className="h-3 sm:h-4 bg-gray-200 rounded w-24 sm:w-32"></div>
+                    <div className="h-3 sm:h-4 bg-gray-200 rounded w-6 sm:w-8"></div>
+                    <div className="h-3 sm:h-4 bg-gray-200 rounded w-20 sm:w-24"></div>
+                    <div className="h-3 sm:h-4 bg-gray-200 rounded w-16 sm:w-20"></div>
+                    <div className="h-6 sm:h-8 bg-gray-200 rounded w-16 sm:w-20"></div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        ) : groupedParties.length === 0 ? (
-          <div className="p-12 text-center text-gray-500 italic text-sm">
-            No parties are currently seated.
-          </div>
-        ) : (
-          <div className="divide-y divide-gray-50">
-            {groupedParties.map((party, index) => (
-              <div key={index} className="grid grid-cols-6 p-4 text-sm text-gray-700 items-center hover:bg-gray-50">
-                <div className="font-semibold">{party.tables.join(', ')}</div>
-                <div>{party.customerName}</div>
-                <div>{party.partySize}</div>
-                <div className="text-gray-500">{party.phone || '-'}</div>
-                <div className="text-gray-500">{formatTime(party.seatedAt)}</div>
-                <div>
-                  <button
-                    onClick={() => handleCheckout(party.sessionIds, party.customerName)}
-                    className="bg-[#198754] hover:bg-green-700 text-white px-3 py-1 rounded text-xs font-medium"
-                  >
-                    Checkout
-                  </button>
-                </div>
+            ) : groupedParties.length === 0 ? (
+              <div className="p-8 sm:p-12 text-center text-gray-500 italic text-xs sm:text-sm">
+                No parties are currently seated.
               </div>
-            ))}
+            ) : (
+              <div className="divide-y divide-gray-50">
+                {groupedParties.map((party, index) => (
+                  <div key={index} className="grid grid-cols-6 p-3 sm:p-4 text-xs sm:text-sm text-gray-700 items-center hover:bg-gray-50">
+                    <div className="font-semibold">{party.tables.join(', ')}</div>
+                    <div className="truncate pr-2">{party.customerName}</div>
+                    <div>{party.partySize}</div>
+                    <div className="text-gray-500">{party.phone || '-'}</div>
+                    <div className="text-gray-500">{formatTime(party.seatedAt)}</div>
+                    <div>
+                      <button
+                        onClick={() => handleCheckout(party.sessionIds, party.customerName)}
+                        className="bg-[#198754] hover:bg-green-700 text-white px-3 py-1 rounded text-xs font-medium"
+                      >
+                        Checkout
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
     </div>
   );

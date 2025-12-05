@@ -14,7 +14,17 @@ const App: React.FC = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentPage, setCurrentPage] = useState('dashboard');
   const [isLoading, setIsLoading] = useState(true);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(true); // Start collapsed on mobile
+
+  // Check if mobile on mount
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsSidebarCollapsed(window.innerWidth < 1024); // Collapse on mobile/tablet
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   useEffect(() => {
     const token = localStorage.getItem('authToken');
@@ -56,16 +66,43 @@ const App: React.FC = () => {
   }
 
 
+  const handleNavigate = (page: string) => {
+    setCurrentPage(page);
+    // Auto-close sidebar on mobile after navigation
+    if (window.innerWidth < 1024) {
+      setIsSidebarCollapsed(true);
+    }
+  };
+
   return (
     <div className="flex bg-[#f5f7fb] min-h-screen">
+      {/* Mobile Header with Hamburger */}
+      <div className="lg:hidden fixed top-0 left-0 right-0 bg-white border-b border-gray-200 z-10 px-4 py-3 flex items-center justify-between">
+        <button
+          onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+          className="p-2 rounded-lg hover:bg-gray-100"
+        >
+          <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+          </svg>
+        </button>
+        <div className="flex items-center gap-2">
+          <svg className="w-6 h-6 text-[#5D3FD3]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path>
+          </svg>
+          <span className="text-lg font-bold text-[#5D3FD3]">RestroFlow</span>
+        </div>
+        <div className="w-10"></div> {/* Spacer for centering */}
+      </div>
+
       <Sidebar 
         activePage={currentPage} 
-        onNavigate={setCurrentPage} 
+        onNavigate={handleNavigate} 
         onLogout={handleLogout}
         isCollapsed={isSidebarCollapsed}
         onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
       />
-      <main className={`flex-1 ${isSidebarCollapsed ? 'ml-20' : 'ml-64'} overflow-auto transition-all duration-300`}>
+      <main className={`flex-1 lg:ml-20 lg:${isSidebarCollapsed ? 'ml-20' : 'ml-64'} overflow-auto transition-all duration-300 pt-16 lg:pt-0`}>
         {currentPage === 'dashboard' && <Dashboard />}
         {currentPage === 'table-status' && <TableStatus />}
         {currentPage === 'occupied-tables' && <OccupiedTables />}
