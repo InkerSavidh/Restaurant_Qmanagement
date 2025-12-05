@@ -16,7 +16,7 @@ const QueueManagement: React.FC = () => {
   const [autoAllocator, setAutoAllocator] = useState(true);
   const [queue, setQueue] = useState<QueueEntry[]>([]);
   const [tables, setTables] = useState<Table[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
@@ -40,6 +40,8 @@ const QueueManagement: React.FC = () => {
     } catch (error) {
       console.error('Error fetching queue:', error);
       setQueue([]);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -200,7 +202,17 @@ const QueueManagement: React.FC = () => {
             <div>Name</div><div># People</div><div>Wait Time</div><div>Phone</div><div>Action</div>
           </div>
           {loading ? (
-            <div className="p-12 text-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#5D3FD3] mx-auto"></div></div>
+            <div className="divide-y divide-gray-50">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="grid grid-cols-5 p-4 items-center animate-pulse">
+                  <div className="h-4 bg-gray-200 rounded w-32"></div>
+                  <div className="h-4 bg-gray-200 rounded w-8"></div>
+                  <div className="h-4 bg-gray-200 rounded w-16"></div>
+                  <div className="h-4 bg-gray-200 rounded w-24"></div>
+                  <div className="h-4 bg-gray-200 rounded w-16"></div>
+                </div>
+              ))}
+            </div>
           ) : queue.length === 0 ? (
             <div className="p-12 text-center text-gray-400 italic text-sm">The waiting queue is empty.</div>
           ) : (

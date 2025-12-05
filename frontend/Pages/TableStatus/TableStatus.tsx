@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { getTablesByFloor, updateTableStatus, getFloors, createTable, deleteTable } from '../../api/tables.api';
-import { useSocket } from '../../hooks/useSocket';
-import { ConnectionStatus } from '../../Components/ConnectionStatus';
 
 interface Table {
   id: string;
@@ -22,7 +20,7 @@ const TableStatus: React.FC = () => {
     { id: '2', name: 'Floor 2' },
   ]);
   const [tables, setTables] = useState<Table[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [showEditModal, setShowEditModal] = useState(false);
   const [newTableNumber, setNewTableNumber] = useState('');
   const [newTableCapacity, setNewTableCapacity] = useState(4);
@@ -53,6 +51,8 @@ const TableStatus: React.FC = () => {
       setTables(sortTablesByNumber(data));
     } catch (error) {
       generateMockTables();
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -73,15 +73,11 @@ const TableStatus: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (activeFloor) fetchTables();
+    if (activeFloor) {
+      setLoading(true);
+      fetchTables();
+    }
   }, [activeFloor]);
-
-  // WebSocket real-time updates
-  const { connectionStatus, error } = useSocket({
-    'table:updated': fetchTables,
-    'seating:created': fetchTables,
-    'seating:ended': fetchTables,
-  });
 
   const handleStatusChange = async (tableId: string, currentStatus: string) => {
     const newStatus = currentStatus === 'AVAILABLE' ? 'UNAVAILABLE' : 'AVAILABLE';
@@ -138,7 +134,6 @@ const TableStatus: React.FC = () => {
 
   return (
     <div className="p-8">
-      <ConnectionStatus status={connectionStatus} error={error} />
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold text-gray-900">Table Status</h2>
         <button 
@@ -169,8 +164,17 @@ const TableStatus: React.FC = () => {
       </div>
 
       {loading ? (
-        <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#5D3FD3]"></div>
+        <div className="grid grid-cols-2 md:grid-cols-5 lg:grid-cols-10 gap-3">
+          {Array.from({ length: 48 }).map((_, i) => (
+            <div key={i} className="border rounded-lg p-3 flex flex-col items-center justify-between aspect-square bg-gray-100 animate-pulse">
+              <div className="text-center mt-2 w-full">
+                <div className="h-5 bg-gray-200 rounded w-12 mx-auto mb-2"></div>
+                <div className="h-3 bg-gray-200 rounded w-16 mx-auto mb-1"></div>
+                <div className="h-3 bg-gray-200 rounded w-14 mx-auto"></div>
+              </div>
+              <div className="h-6 bg-gray-200 rounded w-full mt-2"></div>
+            </div>
+          ))}
         </div>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-5 lg:grid-cols-10 gap-3">

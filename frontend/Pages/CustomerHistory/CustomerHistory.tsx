@@ -3,7 +3,7 @@ import { getCustomerHistory, HistoryEntry, HistoryFilters } from '../../api/hist
 
 const CustomerHistory: React.FC = () => {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState<HistoryFilters>({ startDate: '', endDate: '', customerName: '', tableNumber: '' });
 
   useEffect(() => { fetchHistory(); }, []);
@@ -60,7 +60,22 @@ const CustomerHistory: React.FC = () => {
         <div className="grid grid-cols-9 p-4 bg-white border-b border-gray-100 text-[10px] font-bold text-gray-500 uppercase tracking-wider">
           <div>Name</div><div>Phone</div><div>Party Size</div><div>Table Seated</div><div>Arrival Time</div><div>Seated Time</div><div>Departed Time</div><div>Total Wait (Min)</div><div>Dine Time (Min)</div>
         </div>
-        {loading ? (<div className="p-12 text-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#5D3FD3] mx-auto"></div></div>
+        {loading ? (
+          <div className="divide-y divide-gray-50">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="grid grid-cols-9 p-4 items-center animate-pulse">
+                <div className="h-3 bg-gray-200 rounded w-24"></div>
+                <div className="h-3 bg-gray-200 rounded w-20"></div>
+                <div className="h-3 bg-gray-200 rounded w-8"></div>
+                <div className="h-3 bg-gray-200 rounded w-12"></div>
+                <div className="h-3 bg-gray-200 rounded w-32"></div>
+                <div className="h-3 bg-gray-200 rounded w-16"></div>
+                <div className="h-3 bg-gray-200 rounded w-16"></div>
+                <div className="h-3 bg-gray-200 rounded w-12"></div>
+                <div className="h-3 bg-gray-200 rounded w-12"></div>
+              </div>
+            ))}
+          </div>
         ) : history.length === 0 ? (<div className="p-12 text-center text-gray-500 italic text-sm">No history records found.</div>
         ) : (<div className="divide-y divide-gray-50">{history.map((item) => (
           <div key={item.id} className="grid grid-cols-9 p-4 text-xs text-gray-700 items-center hover:bg-gray-50">

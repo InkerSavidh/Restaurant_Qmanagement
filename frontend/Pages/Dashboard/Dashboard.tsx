@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { getDashboardStats, getNextInQueue, getSeatedPartiesPerHour } from '../../api/analytics.api';
-import { useSocket } from '../../hooks/useSocket';
-import { ConnectionStatus } from '../../Components/ConnectionStatus';
 
 // Seated Parties Area Chart Component
 const SeatedPartiesChart: React.FC = () => {
@@ -22,13 +20,9 @@ const SeatedPartiesChart: React.FC = () => {
 
   useEffect(() => {
     fetchHourlyData();
+    const interval = setInterval(fetchHourlyData, 60000);
+    return () => clearInterval(interval);
   }, []);
-
-  // WebSocket real-time updates
-  const { connectionStatus, error } = useSocket({
-    'seating:created': fetchHourlyData,
-    'seating:ended': fetchHourlyData,
-  });
 
   const maxCount = Math.max(...hourlyData.map(d => d.count), 1);
   
@@ -140,6 +134,7 @@ const Dashboard: React.FC = () => {
     partiesSeatedToday: 0,
   });
   const [nextCustomer, setNextCustomer] = useState<NextCustomer | null>(null);
+  const [loading, setLoading] = useState(true);
 
   const fetchDashboardData = async () => {
     try {
@@ -151,20 +146,16 @@ const Dashboard: React.FC = () => {
       if (nextData) setNextCustomer(nextData);
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
     fetchDashboardData();
+    const interval = setInterval(fetchDashboardData, 30000);
+    return () => clearInterval(interval);
   }, []);
-
-  // WebSocket real-time updates
-  const { connectionStatus, error } = useSocket({
-    'queue:updated': fetchDashboardData,
-    'seating:created': fetchDashboardData,
-    'seating:ended': fetchDashboardData,
-    'table:updated': fetchDashboardData,
-  });
 
   const statCards = [
     { icon: 'bg-blue-500', label: 'Customers in Queue', value: stats.customersInQueue.toString() },
@@ -175,9 +166,46 @@ const Dashboard: React.FC = () => {
     { icon: 'bg-gray-500', label: 'Parties Seated Today', value: stats.partiesSeatedToday.toString() },
   ];
 
+  if (loading) {
+    return (
+      <div className="p-8">
+        <div className="h-8 w-64 bg-gray-200 rounded animate-pulse mb-6"></div>
+
+        {/* Stats Cards Skeleton */}
+        <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-100 mb-6">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div key={i} className="flex flex-col items-start">
+                <div className="w-10 h-10 rounded-full bg-gray-200 animate-pulse mb-4"></div>
+                <div className="h-9 w-20 bg-gray-200 rounded animate-pulse mb-1"></div>
+                <div className="h-4 w-32 bg-gray-200 rounded animate-pulse"></div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Next Up Skeleton */}
+          <div className="lg:col-span-2 bg-white rounded-lg p-6 shadow-sm border border-gray-100">
+            <div className="h-6 w-48 bg-gray-200 rounded animate-pulse mb-4"></div>
+            <div className="border-t border-gray-100 pt-6">
+              <div className="h-5 w-40 bg-gray-200 rounded animate-pulse mb-2"></div>
+              <div className="h-4 w-24 bg-gray-200 rounded animate-pulse"></div>
+            </div>
+          </div>
+
+          {/* Chart Skeleton */}
+          <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-100">
+            <div className="h-6 w-48 bg-gray-200 rounded animate-pulse mb-4"></div>
+            <div className="h-64 bg-gray-100 rounded animate-pulse"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-8">
-      <ConnectionStatus status={connectionStatus} error={error} />
       <h2 className="text-2xl font-bold text-gray-900 mb-6">Dashboard Overview</h2>
 
       {/* Stats Cards */}

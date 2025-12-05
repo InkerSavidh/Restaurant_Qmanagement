@@ -14,7 +14,7 @@ interface GroupedParty {
 
 const OccupiedTables: React.FC = () => {
   const [seatedParties, setSeatedParties] = useState<SeatedParty[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const fetchSeatedParties = async () => {
     try {
@@ -23,6 +23,8 @@ const OccupiedTables: React.FC = () => {
     } catch (error) {
       console.error('Error fetching seated parties:', error);
       setSeatedParties([]);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -100,8 +102,7 @@ const OccupiedTables: React.FC = () => {
 
   return (
     <div className="p-8">
-      <ConnectionStatus status={connectionStatus} error={error} />
-      <h2 className="text-2xl font-bold text-gray-900 mb-6">Seated Parties ({groupedParties.length})</h2>
+      <h2 className="text-2xl font-bold text-gray-900 mb-6">Seated Parties ({loading ? '...' : groupedParties.length})</h2>
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
         <div className="grid grid-cols-6 p-4 border-b border-gray-100 bg-white text-xs font-bold text-gray-500 uppercase tracking-wider">
@@ -114,8 +115,17 @@ const OccupiedTables: React.FC = () => {
         </div>
 
         {loading ? (
-          <div className="p-12 text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#5D3FD3] mx-auto"></div>
+          <div className="divide-y divide-gray-50">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="grid grid-cols-6 p-4 items-center animate-pulse">
+                <div className="h-4 bg-gray-200 rounded w-16"></div>
+                <div className="h-4 bg-gray-200 rounded w-32"></div>
+                <div className="h-4 bg-gray-200 rounded w-8"></div>
+                <div className="h-4 bg-gray-200 rounded w-24"></div>
+                <div className="h-4 bg-gray-200 rounded w-20"></div>
+                <div className="h-8 bg-gray-200 rounded w-20"></div>
+              </div>
+            ))}
           </div>
         ) : groupedParties.length === 0 ? (
           <div className="p-12 text-center text-gray-500 italic text-sm">
