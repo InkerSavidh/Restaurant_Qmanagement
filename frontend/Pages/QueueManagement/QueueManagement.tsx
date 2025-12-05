@@ -175,21 +175,33 @@ const QueueManagement: React.FC = () => {
   }, 0);
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8">
-      <ConnectionStatus status={connectionStatus} error={error} />
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4 sm:mb-6">
-        <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Queue Management</h2>
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 w-full sm:w-auto">
-          <button onClick={handleRunAllocator} className="bg-gray-600 hover:bg-gray-700 text-white px-3 sm:px-4 py-2 rounded text-xs sm:text-sm font-medium flex items-center gap-2 w-full sm:w-auto justify-center">
-            <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-            <span className="hidden sm:inline">Run Allocator Now</span>
-            <span className="sm:hidden">Run Allocator</span>
+    <div className="p-8">
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold text-gray-900">Queue Management</h2>
+        <div className="flex items-center gap-4">
+          <button 
+            onClick={handleRunAllocator} 
+            className="bg-[#5D3FD3] hover:bg-purple-700 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center gap-2 transition-colors shadow-sm"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+            Run Allocator Now
           </button>
-          <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-start">
-            <span className="text-xs sm:text-sm font-medium text-gray-700">Auto-Allocator</span>
-            <button onClick={() => setAutoAllocator(!autoAllocator)} className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors duration-200 ${autoAllocator ? 'bg-[#198754]' : 'bg-gray-300'}`}>
-              <div className={`bg-white w-4 h-4 rounded-full shadow-md transform duration-200 ${autoAllocator ? 'translate-x-5' : 'translate-x-0'}`}></div>
+          <div className="flex items-center gap-3 bg-white px-4 py-2 rounded-md border border-gray-200 shadow-sm">
+            <span className="text-sm font-medium text-gray-700">Auto-Allocator</span>
+            <button 
+              onClick={() => setAutoAllocator(!autoAllocator)} 
+              className={`relative inline-flex w-11 h-6 rounded-full transition-colors duration-300 ${autoAllocator ? 'bg-[#198754]' : 'bg-gray-300'}`}
+              aria-label="Toggle auto-allocator"
+            >
+              <span 
+                className={`inline-block w-4 h-4 m-1 rounded-full bg-white shadow-md transform transition-transform duration-300 ease-in-out ${autoAllocator ? 'translate-x-[0.7rem]' : 'translate-x-0'}`}
+              />
             </button>
+            <span className={`text-xs font-semibold ${autoAllocator ? 'text-green-600' : 'text-gray-500'}`}>
+              {autoAllocator ? 'ON' : 'OFF'}
+            </span>
           </div>
         </div>
       </div>
