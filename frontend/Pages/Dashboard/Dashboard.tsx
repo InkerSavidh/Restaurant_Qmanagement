@@ -58,7 +58,7 @@ const SeatedPartiesChart: React.FC = () => {
   const { linePath, areaPath, points } = generateAreaPath();
 
   return (
-    <div className="bg-white rounded-lg p-4 sm:p-6 shadow-sm border border-gray-100">
+    <div className="bg-white rounded-lg p-4 sm:p-6 shadow-md hover:shadow-lg transition-shadow duration-200 border border-gray-100">
       <h3 className="text-[#5D3FD3] font-semibold mb-3 sm:mb-4 text-sm sm:text-base">Seated Parties Per Hour</h3>
       {loading ? (
         <div className="h-48 sm:h-64 flex items-center justify-center">
@@ -174,7 +174,7 @@ const Dashboard: React.FC = () => {
         {/* Stats Cards Skeleton - Individual Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3 sm:gap-4 mb-4 sm:mb-6">
           {[1, 2, 3, 4, 5, 6].map((i) => (
-            <div key={i} className="bg-white rounded-lg p-4 sm:p-5 shadow-sm border border-gray-100">
+            <div key={i} className="bg-white rounded-lg p-4 sm:p-5 shadow-md border border-gray-100">
               <div className="flex flex-col items-start">
                 <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gray-200 animate-pulse mb-3 sm:mb-4"></div>
                 <div className="h-8 sm:h-9 w-16 sm:w-20 bg-gray-200 rounded animate-pulse mb-1"></div>
@@ -186,7 +186,7 @@ const Dashboard: React.FC = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
           {/* Next Up Skeleton */}
-          <div className="lg:col-span-2 bg-white rounded-lg p-4 sm:p-6 shadow-sm border border-gray-100">
+          <div className="lg:col-span-2 bg-white rounded-lg p-4 sm:p-6 shadow-md border border-gray-100">
             <div className="h-5 sm:h-6 w-40 sm:w-48 bg-gray-200 rounded animate-pulse mb-4"></div>
             <div className="border-t border-gray-100 pt-4 sm:pt-6">
               <div className="h-4 sm:h-5 w-32 sm:w-40 bg-gray-200 rounded animate-pulse mb-2"></div>
@@ -195,7 +195,7 @@ const Dashboard: React.FC = () => {
           </div>
 
           {/* Chart Skeleton */}
-          <div className="bg-white rounded-lg p-4 sm:p-6 shadow-sm border border-gray-100">
+          <div className="bg-white rounded-lg p-4 sm:p-6 shadow-md border border-gray-100">
             <div className="h-5 sm:h-6 w-40 sm:w-48 bg-gray-200 rounded animate-pulse mb-4"></div>
             <div className="h-48 sm:h-64 bg-gray-100 rounded animate-pulse"></div>
           </div>
@@ -211,9 +211,9 @@ const Dashboard: React.FC = () => {
       {/* Stats Cards - Individual Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3 sm:gap-4 mb-4 sm:mb-6">
         {statCards.map((stat, i) => (
-          <div key={i} className="bg-white rounded-lg p-4 sm:p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+          <div key={i} className="bg-white rounded-lg p-4 sm:p-5 shadow-md hover:shadow-lg transition-shadow duration-200 border border-gray-100">
             <div className="flex flex-col items-start">
-              <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full ${stat.icon} flex items-center justify-center text-white mb-3 sm:mb-4`}>
+              <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full ${stat.icon} flex items-center justify-center text-white mb-3 sm:mb-4 shadow-sm`}>
                 <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
@@ -227,7 +227,7 @@ const Dashboard: React.FC = () => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* Next Up To Be Seated */}
-        <div className="lg:col-span-2 bg-white rounded-lg p-4 sm:p-6 shadow-sm border border-gray-100">
+        <div className="lg:col-span-2 bg-white rounded-lg p-4 sm:p-6 shadow-md hover:shadow-lg transition-shadow duration-200 border border-gray-100">
           <h3 className="text-[#5D3FD3] font-semibold mb-4">Next Up To Be Seated</h3>
           <div className="border-t border-gray-100 pt-6">
             {nextCustomer ? (
