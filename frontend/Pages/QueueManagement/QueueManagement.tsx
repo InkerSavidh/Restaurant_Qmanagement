@@ -13,7 +13,7 @@ interface Table {
 }
 
 const QueueManagement: React.FC = () => {
-  const [autoAllocator, setAutoAllocator] = useState(true);
+  const [autoAllocator, setAutoAllocator] = useState(false);
   const [queue, setQueue] = useState<QueueEntry[]>([]);
   const [tables, setTables] = useState<Table[]>([]);
   const [loading, setLoading] = useState(true);
@@ -244,7 +244,7 @@ const QueueManagement: React.FC = () => {
                       <div>{entry.partySize}</div>
                       <div>{entry.waitTime} min</div>
                       <div className="text-gray-500 truncate pr-2">{entry.phone || '-'}</div>
-                      <div><button onClick={() => handleRemove(entry.id)} className="text-red-500 hover:text-red-700 text-[10px] sm:text-xs font-medium">Remove</button></div>
+                      <div><button onClick={() => handleRemove(entry.id)} className="text-red-500 hover:text-red-700 text-[10px] sm:text-xs font-medium px-2 py-1 rounded-full hover:bg-red-50">Remove</button></div>
                     </div>
                   ))}
                 </div>
@@ -252,10 +252,10 @@ const QueueManagement: React.FC = () => {
             </div>
           </div>
           <div className="p-3 sm:p-4 border-t border-gray-100 flex justify-end gap-2">
-            <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className={`bg-[#0d6efd] text-white px-3 sm:px-4 py-1.5 rounded text-xs sm:text-sm flex items-center gap-1 ${currentPage === 1 ? 'opacity-60' : 'hover:bg-blue-600'}`}>
+            <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className={`bg-[#0d6efd] text-white px-3 sm:px-4 py-1.5 rounded-full text-xs sm:text-sm flex items-center gap-1 ${currentPage === 1 ? 'opacity-60' : 'hover:bg-blue-600'}`}>
               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg> <span className="hidden sm:inline">Prev</span>
             </button>
-            <button onClick={() => setCurrentPage(p => Math.min(totalPages || 1, p + 1))} disabled={currentPage >= totalPages} className={`bg-[#0d6efd] text-white px-3 sm:px-4 py-1.5 rounded text-xs sm:text-sm flex items-center gap-1 ${currentPage >= totalPages ? 'opacity-60' : 'hover:bg-blue-600'}`}>
+            <button onClick={() => setCurrentPage(p => Math.min(totalPages || 1, p + 1))} disabled={currentPage >= totalPages} className={`bg-[#0d6efd] text-white px-3 sm:px-4 py-1.5 rounded-full text-xs sm:text-sm flex items-center gap-1 ${currentPage >= totalPages ? 'opacity-60' : 'hover:bg-blue-600'}`}>
               <span className="hidden sm:inline">Next</span> <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
             </button>
           </div>
@@ -268,7 +268,7 @@ const QueueManagement: React.FC = () => {
               <div><label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Name:</label><input type="text" value={newCustomer.name} onChange={(e) => setNewCustomer({ ...newCustomer, name: e.target.value })} className="w-full border border-gray-300 rounded px-3 py-2 text-xs sm:text-sm focus:outline-none focus:border-blue-500" /></div>
               <div><label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Party Size:</label><input type="number" value={newCustomer.partySize} onChange={(e) => setNewCustomer({ ...newCustomer, partySize: e.target.value })} className="w-full border border-gray-300 rounded px-3 py-2 text-xs sm:text-sm focus:outline-none focus:border-blue-500" /></div>
               <div><label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Phone (Optional):</label><input type="text" value={newCustomer.phone} onChange={(e) => setNewCustomer({ ...newCustomer, phone: e.target.value })} placeholder="+91 98765 43210" className="w-full border border-gray-300 rounded px-3 py-2 text-xs sm:text-sm focus:outline-none focus:border-blue-500" /></div>
-              <button type="submit" className="w-full bg-[#198754] hover:bg-green-700 text-white font-medium py-2 rounded transition-colors text-xs sm:text-sm">Add to Queue</button>
+              <button type="submit" className="w-full bg-[#198754] hover:bg-green-700 text-white font-medium py-2 rounded-full transition-colors text-xs sm:text-sm">Add to Queue</button>
             </form>
           </div>
           
@@ -317,7 +317,7 @@ const QueueManagement: React.FC = () => {
                 </div>
               )}
               
-              <button onClick={handleSeatCustomer} disabled={!selectedCustomer || selectedTables.length === 0} className="w-full bg-[#0d6efd] hover:bg-blue-600 text-white font-medium py-2 rounded transition-colors text-xs sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed">
+              <button onClick={handleSeatCustomer} disabled={!selectedCustomer || selectedTables.length === 0} className="w-full bg-[#0d6efd] hover:bg-blue-600 text-white font-medium py-2 rounded-full transition-colors text-xs sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed">
                 Seat Customer ({selectedTables.length} table{selectedTables.length !== 1 ? 's' : ''})
               </button>
             </div>

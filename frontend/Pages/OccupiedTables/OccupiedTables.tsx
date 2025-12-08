@@ -147,7 +147,7 @@ const OccupiedTables: React.FC = () => {
                     <div>
                       <button
                         onClick={() => handleCheckout(party.sessionIds, party.customerName)}
-                        className="bg-[#198754] hover:bg-green-700 text-white px-3 py-1 rounded text-xs font-medium"
+                        className="bg-[#198754] hover:bg-green-700 text-white px-3 py-1 rounded-full text-xs font-medium"
                       >
                         Checkout
                       </button>
