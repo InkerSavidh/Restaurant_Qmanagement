@@ -37,7 +37,7 @@ const ActivityLog: React.FC = () => {
           <div><label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">Start Date</label><input type="date" value={filters.startDate} onChange={(e) => setFilters({ ...filters, startDate: e.target.value })} className="w-full border border-gray-300 rounded px-3 py-2 text-xs sm:text-sm" /></div>
           <div><label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">End Date</label><input type="date" value={filters.endDate} onChange={(e) => setFilters({ ...filters, endDate: e.target.value })} className="w-full border border-gray-300 rounded px-3 py-2 text-xs sm:text-sm" /></div>
         </div>
-        <div className="flex gap-2 sm:col-span-2 lg:col-span-5"><button onClick={handleFilter} className="bg-[#0d6efd] text-white px-4 sm:px-6 py-2 rounded-full text-xs sm:text-sm font-medium hover:bg-blue-600 flex-1">Filter</button><button onClick={handleClear} className="bg-gray-500 text-white px-4 sm:px-6 py-2 rounded-full text-xs sm:text-sm font-medium hover:bg-gray-600 flex-1">Clear</button></div>
+        <div className="flex gap-2 sm:col-span-2 lg:col-span-5"><button onClick={handleFilter} className="bg-[#0d6efd] text-white px-4 sm:px-6 py-2 rounded text-xs sm:text-sm font-medium hover:bg-blue-600 flex-1">Filter</button><button onClick={handleClear} className="bg-gray-500 text-white px-4 sm:px-6 py-2 rounded text-xs sm:text-sm font-medium hover:bg-gray-600 flex-1">Clear</button></div>
       </div>
       <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
         {/* Mobile: Scrollable table */}

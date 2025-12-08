@@ -148,7 +148,7 @@ const TableStatus: React.FC = () => {
         <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Table Status</h2>
         <button 
           onClick={() => setShowEditModal(true)}
-          className="bg-[#5D3FD3] hover:bg-purple-700 text-white px-3 sm:px-4 py-2 rounded-full flex items-center gap-2 text-xs sm:text-sm w-full sm:w-auto justify-center"
+          className="bg-[#5D3FD3] hover:bg-purple-700 text-white px-3 sm:px-4 py-2 rounded-md flex items-center gap-2 text-xs sm:text-sm w-full sm:w-auto justify-center"
         >
           <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -162,7 +162,7 @@ const TableStatus: React.FC = () => {
           <button
             key={floor.id}
             onClick={() => setActiveFloor(floor.id)}
-            className={`px-4 sm:px-6 py-2 rounded-full text-xs sm:text-sm font-medium border flex-1 sm:flex-initial ${
+            className={`px-4 sm:px-6 py-2 rounded-md text-xs sm:text-sm font-medium border flex-1 sm:flex-initial ${
               activeFloor === floor.id
                 ? 'bg-[#0d6efd] text-white border-[#0d6efd]'
                 : 'bg-white text-[#0d6efd] border-[#0d6efd] hover:bg-blue-50'
@@ -204,7 +204,7 @@ const TableStatus: React.FC = () => {
               </div>
               <button
                 onClick={() => handleStatusChange(table.id, table.status)}
-                className={`w-full text-[8px] sm:text-[10px] py-0.5 sm:py-1 rounded-full text-white ${
+                className={`w-full text-[8px] sm:text-[10px] py-0.5 sm:py-1 rounded text-white ${
                   isAvailable(table.status) ? 'bg-gray-500 hover:bg-gray-600' : 'bg-[#198754] hover:bg-green-700'
                 }`}
               >
@@ -256,7 +256,7 @@ const TableStatus: React.FC = () => {
                 </div>
                 <button
                   onClick={handleAddTable}
-                  className="bg-[#198754] hover:bg-green-700 text-white px-4 py-2 rounded-full"
+                  className="bg-[#198754] hover:bg-green-700 text-white px-4 py-2 rounded-md"
                 >
                   Add Table
                 </button>
@@ -295,7 +295,7 @@ const TableStatus: React.FC = () => {
             <div className="mt-4 flex justify-end">
               <button
                 onClick={() => setShowEditModal(false)}
-                className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-full"
+                className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-md"
               >
                 Close
               </button>
