@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { getDashboardStats, getNextInQueue, getSeatedPartiesPerHour } from '../../api/analytics.api';
+import { getDashboardStats, getSeatedPartiesPerHour } from '../../api/analytics.api';
+import { getQueue, QueueEntry } from '../../api/queue.api';
 
 // Seated Parties Area Chart Component
 const SeatedPartiesChart: React.FC = () => {
@@ -118,12 +119,6 @@ interface DashboardStats {
   partiesSeatedToday: number;
 }
 
-interface NextCustomer {
-  id: string;
-  customerName: string;
-  partySize: number;
-}
-
 const Dashboard: React.FC = () => {
   const [stats, setStats] = useState<DashboardStats>({
     customersInQueue: 0,
@@ -133,17 +128,17 @@ const Dashboard: React.FC = () => {
     longestWait: 0,
     partiesSeatedToday: 0,
   });
-  const [nextCustomer, setNextCustomer] = useState<NextCustomer | null>(null);
+  const [queueCustomers, setQueueCustomers] = useState<QueueEntry[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchDashboardData = async () => {
     try {
-      const [statsData, nextData] = await Promise.all([
+      const [statsData, queueData] = await Promise.all([
         getDashboardStats().catch(() => null),
-        getNextInQueue().catch(() => null),
+        getQueue().catch(() => []),
       ]);
       if (statsData) setStats(statsData);
-      if (nextData) setNextCustomer(nextData);
+      if (queueData) setQueueCustomers(queueData);
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
     } finally {
@@ -188,9 +183,16 @@ const Dashboard: React.FC = () => {
           {/* Next Up Skeleton */}
           <div className="lg:col-span-2 bg-white rounded-lg p-4 sm:p-6 shadow-md border border-gray-100">
             <div className="h-5 sm:h-6 w-40 sm:w-48 bg-gray-200 rounded animate-pulse mb-4"></div>
-            <div className="border-t border-gray-100 pt-4 sm:pt-6">
-              <div className="h-4 sm:h-5 w-32 sm:w-40 bg-gray-200 rounded animate-pulse mb-2"></div>
-              <div className="h-3 sm:h-4 w-20 sm:w-24 bg-gray-200 rounded animate-pulse"></div>
+            <div className="border-t border-gray-100 pt-4 space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                  <div className="w-8 h-8 rounded-full bg-gray-200 animate-pulse"></div>
+                  <div className="flex-1">
+                    <div className="h-4 w-32 bg-gray-200 rounded animate-pulse mb-2"></div>
+                    <div className="h-3 w-24 bg-gray-200 rounded animate-pulse"></div>
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
 
@@ -228,17 +230,29 @@ const Dashboard: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* Next Up To Be Seated */}
         <div className="lg:col-span-2 bg-white rounded-lg p-4 sm:p-6 shadow-md hover:shadow-lg transition-shadow duration-200 border border-gray-100">
-          <h3 className="text-[#5D3FD3] font-semibold mb-4">Next Up To Be Seated</h3>
-          <div className="border-t border-gray-100 pt-6">
-            {nextCustomer ? (
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-semibold text-gray-900">{nextCustomer.customerName}</p>
-                  <p className="text-sm text-gray-500">Party of {nextCustomer.partySize}</p>
-                </div>
-              </div>
+          <h3 className="text-[#5D3FD3] font-semibold mb-4">Waiting Queue ({queueCustomers.length})</h3>
+          <div className="border-t border-gray-100 pt-4">
+            {queueCustomers.length === 0 ? (
+              <p className="text-sm text-gray-500 italic py-4">Waiting queue is empty.</p>
             ) : (
-              <p className="text-sm text-gray-800">Waiting queue is empty.</p>
+              <div className="space-y-3 max-h-64 overflow-y-auto">
+                {queueCustomers.map((customer, index) => (
+                  <div key={customer.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-[#5D3FD3] text-white flex items-center justify-center font-bold text-sm">
+                        {index + 1}
+                      </div>
+                      <div>
+                        <p className="font-semibold text-gray-900">{customer.customerName}</p>
+                        <p className="text-xs text-gray-500">Party of {customer.partySize} • Wait: {customer.waitTime} min</p>
+                      </div>
+                    </div>
+                    {customer.phone && (
+                      <p className="text-xs text-gray-500 hidden sm:block">{customer.phone}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         </div>
