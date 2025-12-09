@@ -18,8 +18,8 @@ interface Floor {
 const TableStatus: React.FC = () => {
   const [activeFloor, setActiveFloor] = useState<string>('1');
   const [floors, setFloors] = useState<Floor[]>([
-    { id: '1', name: 'Floor 1' },
-    { id: '2', name: 'Floor 2' },
+    { id: '1', name: 'Ground Floor' },
+    { id: '2', name: 'First Floor' },
   ]);
   const [tables, setTables] = useState<Table[]>([]);
   const [loading, setLoading] = useState(true);
