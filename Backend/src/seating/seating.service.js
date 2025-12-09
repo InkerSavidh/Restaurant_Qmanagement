@@ -78,7 +78,7 @@ export const seatCustomer = async (queueEntryId, tableId, userId) => {
       queueEntryId,
       partySize: queueEntry.partySize,
       assignedById: userId,
-      notes: customerInfo,
+      notes: customerInfo, // Already stringified above
     },
   });
   
@@ -232,9 +232,21 @@ export const endSeatingSession = async (sessionId) => {
   // Calculate times
   const endTime = new Date();
   const arrivalTime = new Date(customerInfo.entryTime);
-  const seatedTime = session.seatedAt;
-  const totalWait = Math.round((seatedTime - arrivalTime) / 60000);
-  const dineTime = Math.round((endTime - seatedTime) / 60000);
+  const seatedTime = new Date(session.seatedAt);
+  
+  // Log for debugging
+  console.log('⏰ Time calculation:', {
+    arrivalTime: arrivalTime.toISOString(),
+    seatedTime: seatedTime.toISOString(),
+    endTime: endTime.toISOString(),
+    waitMs: seatedTime - arrivalTime,
+    dineMs: endTime - seatedTime,
+  });
+  
+  // Calculate wait time (from arrival to seated) - ensure positive value and cap at reasonable max (e.g., 24 hours)
+  const totalWait = Math.min(1440, Math.max(0, Math.round((seatedTime - arrivalTime) / 60000)));
+  // Calculate dining time (from seated to checkout) - ensure positive value and cap at reasonable max (e.g., 12 hours)
+  const dineTime = Math.min(720, Math.max(0, Math.round((endTime - seatedTime) / 60000)));
   
   // Combine table numbers
   const tableNumbers = allSessions.map(s => `T${s.table.tableNumber}`).join(', ');
