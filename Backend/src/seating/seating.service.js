@@ -219,15 +219,22 @@ export const endSeatingSession = async (sessionId) => {
     }
   }
   
-  // Find ALL sessions for this SPECIFIC seating (same queueEntryId AND same seatedAt time)
-  // This ensures we only checkout tables from the same seating event, not different customers
+  // Find ALL sessions for this SPECIFIC seating (same queueEntryId)
+  // For multi-table seating, all sessions are created at the same time with the same queueEntryId
   const allSessions = await prisma.seatingSession.findMany({
     where: { 
       queueEntryId: session.queueEntryId,
-      seatedAt: session.seatedAt, // IMPORTANT: Only sessions from the same seating event
+      endedAt: null, // Only get active sessions (not already checked out)
     },
     include: { table: true },
   });
+  
+  console.log(`📊 Found ${allSessions.length} active sessions for this customer:`, allSessions.map(s => ({ 
+    id: s.id, 
+    tableNumber: s.table.tableNumber,
+    queueEntryId: s.queueEntryId,
+    seatedAt: s.seatedAt 
+  })));
   
   // Calculate times
   const endTime = new Date();
@@ -251,21 +258,39 @@ export const endSeatingSession = async (sessionId) => {
   // Combine table numbers
   const tableNumbers = allSessions.map(s => `T${s.table.tableNumber}`).join(', ');
   
-  // Save to customer history (always save, even if customerId is null)
-  await prisma.customerHistory.create({
-    data: {
-      customerId: customerInfo.customerId,
+  // Save to customer history - ONLY ONCE per checkout
+  // Use the queueEntryId and seatedAt as a unique identifier to prevent duplicates
+  const historyKey = `${session.queueEntryId}_${session.seatedAt.getTime()}`;
+  
+  // Check if we already saved history for this exact seating session
+  const existingHistory = await prisma.customerHistory.findFirst({
+    where: {
       customerName: customerInfo.customerName,
-      customerPhone: customerInfo.customerPhone || null,
+      seatedTime: seatedTime,
       partySize: session.partySize,
-      tableNumbers,
-      arrivalTime,
-      seatedTime,
-      departedTime: endTime,
-      totalWaitTime: totalWait,
-      totalDiningTime: dineTime,
     },
   });
+  
+  if (!existingHistory) {
+    // Save to customer history
+    await prisma.customerHistory.create({
+      data: {
+        customerId: customerInfo.customerId,
+        customerName: customerInfo.customerName,
+        customerPhone: customerInfo.customerPhone || null,
+        partySize: session.partySize,
+        tableNumbers,
+        arrivalTime,
+        seatedTime,
+        departedTime: endTime,
+        totalWaitTime: totalWait,
+        totalDiningTime: dineTime,
+      },
+    });
+    console.log(`✅ Customer history saved for ${customerInfo.customerName} (party of ${session.partySize}) at tables: ${tableNumbers}`);
+  } else {
+    console.log(`⚠️ Customer history already exists for ${customerInfo.customerName} at ${seatedTime.toISOString()}, skipping duplicate`);
+  }
   
   // Update all table statuses to AVAILABLE
   const tableIds = allSessions.map(s => s.tableId);
@@ -274,13 +299,15 @@ export const endSeatingSession = async (sessionId) => {
     data: { status: 'AVAILABLE' },
   });
   
-  // Delete only the sessions from this specific seating event
-  await prisma.seatingSession.deleteMany({
+  // Delete all sessions for this customer (using the session IDs we found)
+  const sessionIdsToDelete = allSessions.map(s => s.id);
+  const deleteResult = await prisma.seatingSession.deleteMany({
     where: { 
-      queueEntryId: session.queueEntryId,
-      seatedAt: session.seatedAt, // IMPORTANT: Only delete sessions from the same seating event
+      id: { in: sessionIdsToDelete }
     },
   });
+  
+  console.log(`🗑️ Deleted ${deleteResult.count} seating sessions (expected ${allSessions.length})`);
   
   // Emit WebSocket events
   try {
