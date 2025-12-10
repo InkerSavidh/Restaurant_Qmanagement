@@ -41,6 +41,16 @@ export const updateStatus = async (req, res, next) => {
 
     const userId = req.user?.id || null;
     const table = await tablesService.updateTableStatus(id, status, userId);
+    
+    // Emit WebSocket event with incremental data
+    try {
+      const { getIO } = await import('../config/socket.js');
+      const io = getIO();
+      io.emit('table:statusChanged', { tableId: id, status });
+    } catch (error) {
+      console.error('WebSocket emit error:', error);
+    }
+    
     return successResponse(res, 'Table status updated successfully', table);
   } catch (error) {
     next(error);
@@ -69,6 +79,16 @@ export const createTable = async (req, res, next) => {
       return errorResponse(res, 'Table number, capacity, and floor ID are required', 400);
     }
     const table = await tablesService.createTable({ tableNumber, capacity, floorId });
+    
+    // Emit WebSocket event
+    try {
+      const { getIO } = await import('../config/socket.js');
+      const io = getIO();
+      io.emit('table:created', { tableId: table.id, floorId });
+    } catch (error) {
+      console.error('WebSocket emit error:', error);
+    }
+    
     return successResponse(res, 'Table created successfully', table, 201);
   } catch (error) {
     if (error.code === 'P2002') {
@@ -84,7 +104,17 @@ export const createTable = async (req, res, next) => {
 export const deleteTable = async (req, res, next) => {
   try {
     const { id } = req.params;
-    await tablesService.deleteTable(id);
+    const table = await tablesService.deleteTable(id);
+    
+    // Emit WebSocket event
+    try {
+      const { getIO } = await import('../config/socket.js');
+      const io = getIO();
+      io.emit('table:deleted', { tableId: id });
+    } catch (error) {
+      console.error('WebSocket emit error:', error);
+    }
+    
     return successResponse(res, 'Table deleted successfully');
   } catch (error) {
     if (error.message.includes('active seating')) {

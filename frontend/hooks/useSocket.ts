@@ -6,7 +6,7 @@ const SOCKET_URL = 'http://localhost:3000';
 
 export type ConnectionStatus = 'connected' | 'disconnected' | 'reconnecting' | 'error';
 
-export const useSocket = (events: { [event: string]: () => void }) => {
+export const useSocket = (events: { [event: string]: (data?: any) => void }) => {
   const socketRef = useRef<Socket | null>(null);
   const eventsRef = useRef(events);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('disconnected');

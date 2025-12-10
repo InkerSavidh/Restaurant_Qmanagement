@@ -1,6 +1,7 @@
 // Backend/src/seating/seating.service.js
 import prisma from '../config/database.js';
 import { getIO } from '../config/socket.js';
+import { cache, CACHE_KEYS } from '../common/cache.service.js';
 
 export const getActiveSeating = async () => {
   const sessions = await prisma.seatingSession.findMany({
@@ -99,12 +100,16 @@ export const seatCustomer = async (queueEntryId, tableId, userId) => {
     data: { position: { decrement: 1 } },
   });
   
-  // Emit WebSocket events
+  // Invalidate cache and emit WebSocket events
+  cache.delete(CACHE_KEYS.DASHBOARD_STATS);
+  cache.delete(CACHE_KEYS.HOURLY_CHART);
+  cache.invalidatePattern('tables:');
+  
   try {
     const io = getIO();
     io.emit('seating:created', { sessionId: session.id });
-    io.emit('table:updated', { tableId });
-    io.emit('queue:updated');
+    io.emit('table:statusChanged', { tableId, status: 'OCCUPIED' });
+    io.emit('queue:removed', { id: queueEntryId });
   } catch (error) {
     console.error('WebSocket emit error:', error);
   }
@@ -177,12 +182,16 @@ export const seatCustomerMultipleTables = async (queueEntryId, tableIds, userId)
     data: { position: { decrement: 1 } },
   });
   
-  // Emit WebSocket events
+  // Invalidate cache and emit WebSocket events
+  cache.delete(CACHE_KEYS.DASHBOARD_STATS);
+  cache.delete(CACHE_KEYS.HOURLY_CHART);
+  cache.invalidatePattern('tables:');
+  
   try {
     const io = getIO();
     io.emit('seating:created', { sessionIds: sessions.map(s => s.id) });
-    tableIds.forEach(tableId => io.emit('table:updated', { tableId }));
-    io.emit('queue:updated');
+    tableIds.forEach(tableId => io.emit('table:statusChanged', { tableId, status: 'OCCUPIED' }));
+    io.emit('queue:removed', { id: queueEntryId });
   } catch (error) {
     console.error('WebSocket emit error:', error);
   }
@@ -309,11 +318,15 @@ export const endSeatingSession = async (sessionId) => {
   
   console.log(`🗑️ Deleted ${deleteResult.count} seating sessions (expected ${allSessions.length})`);
   
-  // Emit WebSocket events
+  // Invalidate cache and emit WebSocket events
+  cache.delete(CACHE_KEYS.DASHBOARD_STATS);
+  cache.delete(CACHE_KEYS.HOURLY_CHART);
+  cache.invalidatePattern('tables:');
+  
   try {
     const io = getIO();
-    io.emit('seating:ended', { sessionId });
-    tableIds.forEach(tableId => io.emit('table:updated', { tableId }));
+    io.emit('seating:ended', { sessionId, tableIds });
+    tableIds.forEach(tableId => io.emit('table:statusChanged', { tableId, status: 'AVAILABLE' }));
   } catch (error) {
     console.error('WebSocket emit error:', error);
   }

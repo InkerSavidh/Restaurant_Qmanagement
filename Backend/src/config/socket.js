@@ -10,13 +10,46 @@ export const initializeSocket = (server) => {
       methods: ['GET', 'POST'],
       credentials: true,
     },
+    // Optimize connection settings
+    pingTimeout: 60000,        // 60 seconds before considering connection dead
+    pingInterval: 25000,       // Send ping every 25 seconds
+    upgradeTimeout: 30000,     // 30 seconds to upgrade transport
+    allowEIO3: true,           // Allow Engine.IO v3 clients
+    transports: ['websocket', 'polling'],
+    // Connection management
+    maxHttpBufferSize: 1e6,    // 1MB max buffer
+    allowRequest: (req, callback) => {
+      // Add connection validation if needed
+      callback(null, true);
+    },
   });
 
-  io.on('connection', (socket) => {
-    console.log('✅ Client connected:', socket.id);
+  // Track active connections
+  let activeConnections = 0;
 
-    socket.on('disconnect', () => {
-      console.log('❌ Client disconnected:', socket.id);
+  io.on('connection', (socket) => {
+    activeConnections++;
+    console.log(`✅ Client connected: ${socket.id} (Total: ${activeConnections})`);
+
+    // Send welcome message to confirm connection
+    socket.emit('connection:confirmed', { 
+      id: socket.id, 
+      timestamp: new Date().toISOString() 
+    });
+
+    socket.on('disconnect', (reason) => {
+      activeConnections--;
+      console.log(`❌ Client disconnected: ${socket.id} (Reason: ${reason}, Total: ${activeConnections})`);
+    });
+
+    // Handle connection errors
+    socket.on('error', (error) => {
+      console.error(`🔥 Socket error for ${socket.id}:`, error);
+    });
+
+    // Heartbeat to keep connection alive
+    socket.on('ping', () => {
+      socket.emit('pong');
     });
   });
 

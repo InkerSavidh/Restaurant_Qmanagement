@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getActiveSeating, endSeatingSession, SeatedParty } from '../../api/seating.api';
-import { useSocket } from '../../hooks/useSocket';
+import { useSocket } from '../../hooks/useSocketManager';
 import { ConnectionStatus } from '../../Components/ConnectionStatus';
 
 interface GroupedParty {

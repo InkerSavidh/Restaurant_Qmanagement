@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { getTablesByFloor, updateTableStatus, getFloors, createTable, deleteTable } from '../../api/tables.api';
-import { useSocket } from '../../hooks/useSocket';
+import { useSocket } from '../../hooks/useSocketManager';
+import { useThrottle } from '../../hooks/useDebounce';
 import { ConnectionStatus } from '../../Components/ConnectionStatus';
 
 interface Table {
@@ -54,7 +55,8 @@ const TableStatus: React.FC = () => {
     } catch (error) {
       generateMockTables();
     } finally {
-      setLoading(false);
+      // Reduce loading time for better perceived performance
+      setTimeout(() => setLoading(false), 50);
     }
   };
 
@@ -70,11 +72,26 @@ const TableStatus: React.FC = () => {
     }
   };
 
-  // WebSocket real-time updates
+  // WebSocket handlers for incremental updates
+  const handleTableStatusChanged = (data: { tableId: string; status: string }) => {
+    setTables(prev => prev.map(t => 
+      t.id === data.tableId ? { ...t, status: data.status } : t
+    ));
+  };
+
+  const handleTableCreated = () => {
+    fetchTables(); // Fetch all when new table added
+  };
+
+  const handleTableDeleted = () => {
+    fetchTables(); // Fetch all when table deleted
+  };
+
+  // WebSocket real-time updates with incremental data
   const { connectionStatus, error } = useSocket({
-    'table:updated': fetchTables,
-    'table:created': fetchTables,
-    'table:deleted': fetchTables,
+    'table:statusChanged': handleTableStatusChanged,
+    'table:created': handleTableCreated,
+    'table:deleted': handleTableDeleted,
   });
 
   useEffect(() => {
@@ -88,7 +105,7 @@ const TableStatus: React.FC = () => {
     }
   }, [activeFloor]);
 
-  const handleStatusChange = async (tableId: string, currentStatus: string) => {
+  const handleStatusChangeInternal = async (tableId: string, currentStatus: string) => {
     const newStatus = currentStatus === 'AVAILABLE' ? 'UNAVAILABLE' : 'AVAILABLE';
     
     // Optimistic update - change UI immediately
@@ -108,6 +125,9 @@ const TableStatus: React.FC = () => {
       alert('Failed to update table status');
     }
   };
+
+  // Throttle status changes to prevent rapid clicking
+  const handleStatusChange = useThrottle(handleStatusChangeInternal, 1000);
 
   const handleAddTable = async () => {
     if (!newTableNumber.trim()) {

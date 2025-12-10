@@ -1,6 +1,7 @@
 // Backend/src/tables/tables.service.js
 import prisma from '../config/database.js';
 import { logAction } from '../activity/activity.service.js';
+import { cache, CACHE_KEYS } from '../common/cache.service.js';
 
 /**
  * Get all tables
@@ -57,6 +58,23 @@ export const updateTableStatus = async (tableId, status, userId = null) => {
     JSON.stringify({ message: `Table T${table.tableNumber} ${statusText}.` })
   );
   
+  // Invalidate cache and emit WebSocket event
+  cache.delete(CACHE_KEYS.DASHBOARD_STATS);
+  cache.invalidatePattern('tables:');
+  
+  try {
+    const { getIO } = await import('../config/socket.js');
+    const io = getIO();
+    io.emit('table:status-changed', { 
+      tableId, 
+      tableNumber: table.tableNumber,
+      status: table.status,
+      floorId: table.floorId
+    });
+  } catch (error) {
+    console.error('WebSocket emit error:', error);
+  }
+  
   return table;
 };
 
@@ -77,7 +95,7 @@ export const getAllFloors = async () => {
  */
 export const createTable = async (data) => {
   const { tableNumber, capacity, floorId } = data;
-  return await prisma.table.create({
+  const table = await prisma.table.create({
     data: {
       tableNumber,
       capacity,
@@ -86,6 +104,23 @@ export const createTable = async (data) => {
     },
     include: { floor: true },
   });
+  
+  // Emit WebSocket event with incremental data
+  try {
+    const { getIO } = await import('../config/socket.js');
+    const io = getIO();
+    io.emit('table:created', { 
+      id: table.id,
+      tableNumber: table.tableNumber,
+      capacity: table.capacity,
+      status: table.status,
+      floorId: table.floorId
+    });
+  } catch (error) {
+    console.error('WebSocket emit error:', error);
+  }
+  
+  return table;
 };
 
 /**
@@ -104,8 +139,29 @@ export const deleteTable = async (tableId) => {
     throw new Error('Cannot delete table with active seating session');
   }
   
+  // Get table info before deletion
+  const table = await prisma.table.findUnique({
+    where: { id: tableId },
+    include: { floor: true }
+  });
+  
   // Hard delete the table
-  return await prisma.table.delete({
+  const result = await prisma.table.delete({
     where: { id: tableId },
   });
+  
+  // Emit WebSocket event with incremental data
+  try {
+    const { getIO } = await import('../config/socket.js');
+    const io = getIO();
+    io.emit('table:deleted', { 
+      tableId,
+      tableNumber: table.tableNumber,
+      floorId: table.floorId
+    });
+  } catch (error) {
+    console.error('WebSocket emit error:', error);
+  }
+  
+  return result;
 };

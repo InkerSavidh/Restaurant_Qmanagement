@@ -57,6 +57,8 @@ model Table {
   seatingSessions SeatingSession[]
   
   @@unique([tableNumber, floorId])
+  @@index([status, isActive])
+  @@index([floorId, status])
   @@map("tables")
 }
 
@@ -93,6 +95,8 @@ model QueueEntry {
   customer        Customer          @relation(fields: [customerId], references: [id], onDelete: Cascade)
   seatingSessions SeatingSession[]
   
+  @@index([status, position])
+  @@index([status])
   @@map("queue_entries")
 }
 
@@ -135,6 +139,9 @@ model SeatingSession {
   reservation Reservation? @relation(fields: [reservationId], references: [id])
   assignedBy  User         @relation("AssignedBy", fields: [assignedById], references: [id])
   
+  @@index([endedAt])
+  @@index([seatedAt])
+  @@index([queueEntryId, endedAt])
   @@map("seating_sessions")
 }
 

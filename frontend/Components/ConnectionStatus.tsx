@@ -1,6 +1,6 @@
 // frontend/Components/ConnectionStatus.tsx
 import React from 'react';
-import { ConnectionStatus as Status } from '../hooks/useSocket';
+import { ConnectionStatus as Status } from '../hooks/useSocketManager';
 
 interface ConnectionStatusProps {
   status: Status;

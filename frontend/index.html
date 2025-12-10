@@ -4,6 +4,36 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>RestroFlow Login</title>
+    
+    <!-- Performance optimizations -->
+    <link rel="preconnect" href="https://cdn.tailwindcss.com">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="dns-prefetch" href="http://localhost:3000">
+    
+    <!-- Critical CSS inlined for faster LCP -->
+    <style>
+      /* Critical styles for LCP element */
+      .text-xl { font-size: 1.25rem; line-height: 1.75rem; }
+      .sm\:text-2xl { font-size: 1.5rem; line-height: 2rem; }
+      .font-bold { font-weight: 700; }
+      .text-gray-900 { color: rgb(17 24 39); }
+      .mb-4 { margin-bottom: 1rem; }
+      .sm\:mb-6 { margin-bottom: 1.5rem; }
+      .p-4 { padding: 1rem; }
+      .sm\:p-6 { padding: 1.5rem; }
+      .lg\:p-8 { padding: 2rem; }
+      @media (min-width: 640px) {
+        .sm\:text-2xl { font-size: 1.5rem; line-height: 2rem; }
+        .sm\:mb-6 { margin-bottom: 1.5rem; }
+        .sm\:p-6 { padding: 1.5rem; }
+      }
+      @media (min-width: 1024px) {
+        .lg\:p-8 { padding: 2rem; }
+      }
+    </style>
+    
+    <!-- Load Tailwind after critical styles -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- <script>

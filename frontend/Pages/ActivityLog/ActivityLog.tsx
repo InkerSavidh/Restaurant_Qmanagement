@@ -44,7 +44,17 @@ const ActivityLog: React.FC = () => {
         <div className="overflow-x-auto">
           <div className="min-w-[800px]">
             <div className="grid grid-cols-12 p-3 sm:p-4 bg-white border-b border-gray-100 text-[10px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider"><div className="col-span-2">Timestamp</div><div className="col-span-1">User</div><div className="col-span-2">Action Badge</div><div className="col-span-7">Action Details</div></div>
-            {loading ? (<div className="p-8 sm:p-12 text-center"><div className="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-[#5D3FD3] mx-auto"></div></div>
+            {loading ? (
+              <div className="divide-y divide-gray-50">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <div key={i} className="grid grid-cols-12 p-3 sm:p-4 items-center">
+                    <div className="col-span-2 h-3 w-20 sm:w-24 bg-gray-200 rounded animate-pulse"></div>
+                    <div className="col-span-1 h-3 w-12 sm:w-16 bg-gray-200 rounded animate-pulse"></div>
+                    <div className="col-span-2 h-6 w-16 sm:w-20 bg-gray-200 rounded animate-pulse"></div>
+                    <div className="col-span-7 h-3 w-32 sm:w-48 bg-gray-200 rounded animate-pulse"></div>
+                  </div>
+                ))}
+              </div>
             ) : logs.length === 0 ? (<div className="p-8 sm:p-12 text-center text-gray-500 italic text-xs sm:text-sm">No activity logs found.</div>
             ) : (<div className="divide-y divide-gray-50">{logs.map((log) => (
               <div key={log.id} className="grid grid-cols-12 p-3 sm:p-4 text-xs sm:text-sm text-gray-700 items-center hover:bg-gray-50">

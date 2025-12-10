@@ -2,6 +2,7 @@
 import prisma from '../config/database.js';
 import { logAction } from '../activity/activity.service.js';
 import { getIO } from '../config/socket.js';
+import { cache, CACHE_KEYS } from '../common/cache.service.js';
 
 export const getQueueList = async () => {
   const entries = await prisma.queueEntry.findMany({
@@ -81,10 +82,22 @@ export const addToQueue = async (data) => {
     JSON.stringify({ message: `Customer ${name} added to queue (Party of ${partySize}).` })
   );
   
-  // Emit WebSocket event
+  // Invalidate cache and emit WebSocket event
+  cache.delete(CACHE_KEYS.DASHBOARD_STATS);
+  cache.delete(CACHE_KEYS.QUEUE_LIST);
+  
   try {
     const io = getIO();
-    io.emit('queue:updated');
+    io.emit('queue:added', {
+      id: entry.id,
+      customerName: entry.customer.name,
+      partySize: entry.partySize,
+      phone: entry.customer.phoneNumber?.startsWith('walk-in-') ? 'N/A' : (entry.customer.phoneNumber || 'N/A'),
+      waitTime: entry.estimatedWaitMinutes,
+      position: entry.position,
+      entryTime: entry.entryTime.toISOString(),
+      status: entry.status,
+    });
   } catch (error) {
     console.error('WebSocket emit error:', error);
   }
@@ -118,10 +131,13 @@ export const removeFromQueue = async (queueId) => {
     JSON.stringify({ message: `Customer ${entry.customer.name} removed from queue.` })
   );
   
-  // Emit WebSocket event
+  // Invalidate cache and emit WebSocket event
+  cache.delete(CACHE_KEYS.DASHBOARD_STATS);
+  cache.delete(CACHE_KEYS.QUEUE_LIST);
+  
   try {
     const io = getIO();
-    io.emit('queue:updated');
+    io.emit('queue:removed', { id: queueId });
   } catch (error) {
     console.error('WebSocket emit error:', error);
   }

@@ -53,7 +53,17 @@ const ManageWaiters: React.FC = () => {
         <h3 className="text-base sm:text-lg font-bold text-gray-900 mb-3 sm:mb-4">Existing Waiters</h3>
         <div className="border-t border-gray-100">
           <div className="grid grid-cols-2 py-2 sm:py-3 border-b border-gray-100 text-[10px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider"><div>Username</div><div className="text-right">Action</div></div>
-          {loading ? (<div className="py-6 sm:py-8 text-center"><div className="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-[#5D3FD3] mx-auto"></div></div>
+          {loading ? (
+            <div className="divide-y divide-gray-50">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="grid grid-cols-2 py-3 sm:py-4 items-center">
+                  <div className="h-4 w-24 sm:w-32 bg-gray-200 rounded animate-pulse"></div>
+                  <div className="text-right">
+                    <div className="h-6 w-16 bg-gray-200 rounded animate-pulse ml-auto"></div>
+                  </div>
+                </div>
+              ))}
+            </div>
           ) : waiters.length === 0 ? (<div className="py-6 sm:py-8 text-center text-gray-500 italic text-xs sm:text-sm">No waiters found.</div>
           ) : (waiters.map((waiter) => (
             <div key={waiter.id} className="grid grid-cols-2 py-3 sm:py-4 items-center hover:bg-gray-50">

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { getDashboardStats, getSeatedPartiesPerHour } from '../../api/analytics.api';
 import { getQueue, QueueEntry } from '../../api/queue.api';
+import { useSocket } from '../../hooks/useSocketManager';
 
 // Seated Parties Area Chart Component
 const SeatedPartiesChart: React.FC = () => {
@@ -21,7 +22,8 @@ const SeatedPartiesChart: React.FC = () => {
 
   useEffect(() => {
     fetchHourlyData();
-    const interval = setInterval(fetchHourlyData, 60000);
+    // Reduce polling frequency for chart data (every 5 minutes instead of 1 minute)
+    const interval = setInterval(fetchHourlyData, 300000);
     return () => clearInterval(interval);
   }, []);
 
@@ -59,11 +61,23 @@ const SeatedPartiesChart: React.FC = () => {
   const { linePath, areaPath, points } = generateAreaPath();
 
   return (
-    <div className="bg-white rounded-lg p-4 sm:p-6 shadow-md hover:shadow-lg transition-shadow duration-200 border border-gray-100">
+    <div className="bg-white rounded-lg p-4 sm:p-6 shadow-md hover:shadow-lg transition-shadow duration-200 border border-gray-100 min-h-[320px]">
       <h3 className="text-[#5D3FD3] font-semibold mb-3 sm:mb-4 text-sm sm:text-base">Seated Parties Per Hour</h3>
       {loading ? (
-        <div className="h-48 sm:h-64 flex items-center justify-center">
-          <div className="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-[#5D3FD3]"></div>
+        <div className="h-48 sm:h-64 w-full">
+          {/* Chart skeleton instead of loading circle */}
+          <div className="w-full h-full bg-gray-100 rounded animate-pulse flex items-end justify-between p-4 gap-1">
+            {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+              <div 
+                key={i} 
+                className="bg-gray-200 rounded-sm animate-pulse" 
+                style={{ 
+                  height: `${Math.random() * 60 + 20}%`, 
+                  width: '10%' 
+                }}
+              ></div>
+            ))}
+          </div>
         </div>
       ) : hourlyData.length === 0 ? (
         <div className="h-48 sm:h-64 flex items-center justify-center text-gray-500 text-xs sm:text-sm">
@@ -129,28 +143,78 @@ const Dashboard: React.FC = () => {
     partiesSeatedToday: 0,
   });
   const [queueCustomers, setQueueCustomers] = useState<QueueEntry[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [statsLoading, setStatsLoading] = useState(true);
+  const [queueLoading, setQueueLoading] = useState(true);
 
   const fetchDashboardData = async () => {
     try {
-      const [statsData, queueData] = await Promise.all([
-        getDashboardStats().catch(() => null),
-        getQueue().catch(() => []),
-      ]);
-      if (statsData) setStats(statsData);
-      if (queueData) setQueueCustomers(queueData);
+      // Start both requests immediately but handle them independently
+      getDashboardStats()
+        .then(statsData => {
+          if (statsData) setStats(statsData);
+          setStatsLoading(false);
+        })
+        .catch(() => setStatsLoading(false));
+      
+      getQueue()
+        .then(queueData => {
+          if (queueData) setQueueCustomers(queueData);
+          setQueueLoading(false);
+        })
+        .catch(() => setQueueLoading(false));
+        
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
-    } finally {
-      setLoading(false);
+      setStatsLoading(false);
+      setQueueLoading(false);
     }
+  };
+
+  const fetchStatsOnly = async () => {
+    try {
+      const statsData = await getDashboardStats();
+      if (statsData) setStats(statsData);
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+    }
+  };
+
+  // WebSocket handlers for incremental updates
+  const handleQueueAdded = (data: QueueEntry) => {
+    setQueueCustomers(prev => [...prev, data]);
+    fetchStatsOnly(); // Only refresh stats, not full queue
+  };
+
+  const handleQueueRemoved = (data: { id: string }) => {
+    setQueueCustomers(prev => prev.filter(q => q.id !== data.id));
+    fetchStatsOnly();
+  };
+
+  const handleTableStatusChanged = () => {
+    fetchStatsOnly(); // Only refresh stats
+  };
+
+  const handleSeatingCreated = () => {
+    fetchStatsOnly();
+  };
+
+  const handleSeatingEnded = () => {
+    fetchStatsOnly();
   };
 
   useEffect(() => {
     fetchDashboardData();
-    const interval = setInterval(fetchDashboardData, 30000);
-    return () => clearInterval(interval);
+    // No polling - rely on WebSocket for updates
   }, []);
+
+  // WebSocket real-time updates with incremental data
+  useSocket({
+    'queue:added': handleQueueAdded,
+    'queue:removed': handleQueueRemoved,
+    'table:statusChanged': handleTableStatusChanged,
+    'seating:created': handleSeatingCreated,
+    'seating:ended': handleSeatingEnded,
+  });
 
   const statCards = [
     { icon: 'bg-blue-500', label: 'Customers in Queue', value: stats.customersInQueue.toString() },
@@ -161,99 +225,86 @@ const Dashboard: React.FC = () => {
     { icon: 'bg-gray-500', label: 'Parties Seated Today', value: stats.partiesSeatedToday.toString() },
   ];
 
-  if (loading) {
-    return (
-      <div className="p-4 sm:p-6 lg:p-8">
-        <div className="h-6 sm:h-8 w-48 sm:w-64 bg-gray-200 rounded animate-pulse mb-4 sm:mb-6"></div>
-
-        {/* Stats Cards Skeleton - Individual Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3 sm:gap-4 mb-4 sm:mb-6">
-          {[1, 2, 3, 4, 5, 6].map((i) => (
-            <div key={i} className="bg-white rounded-lg p-4 sm:p-5 shadow-md border border-gray-100">
-              <div className="flex flex-col items-start">
-                <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gray-200 animate-pulse mb-3 sm:mb-4"></div>
-                <div className="h-8 sm:h-9 w-16 sm:w-20 bg-gray-200 rounded animate-pulse mb-1"></div>
-                <div className="h-3 sm:h-4 w-24 sm:w-32 bg-gray-200 rounded animate-pulse"></div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-          {/* Next Up Skeleton */}
-          <div className="lg:col-span-2 bg-white rounded-lg p-4 sm:p-6 shadow-md border border-gray-100">
-            <div className="h-5 sm:h-6 w-40 sm:w-48 bg-gray-200 rounded animate-pulse mb-4"></div>
-            <div className="border-t border-gray-100 pt-4 space-y-3">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                  <div className="w-8 h-8 rounded-full bg-gray-200 animate-pulse"></div>
-                  <div className="flex-1">
-                    <div className="h-4 w-32 bg-gray-200 rounded animate-pulse mb-2"></div>
-                    <div className="h-3 w-24 bg-gray-200 rounded animate-pulse"></div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Chart Skeleton */}
-          <div className="bg-white rounded-lg p-4 sm:p-6 shadow-md border border-gray-100">
-            <div className="h-5 sm:h-6 w-40 sm:w-48 bg-gray-200 rounded animate-pulse mb-4"></div>
-            <div className="h-48 sm:h-64 bg-gray-100 rounded animate-pulse"></div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // Remove full-page skeleton - use progressive loading only
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
+      {/* LCP Element - No animation delay for faster rendering */}
       <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 sm:mb-6">Dashboard Overview</h2>
 
-      {/* Stats Cards - Individual Cards */}
+      {/* Stats Cards - Fixed height to prevent layout shift */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3 sm:gap-4 mb-4 sm:mb-6">
         {statCards.map((stat, i) => (
-          <div key={i} className="bg-white rounded-lg p-4 sm:p-5 shadow-md hover:shadow-lg transition-shadow duration-200 border border-gray-100">
-            <div className="flex flex-col items-start">
-              <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full ${stat.icon} flex items-center justify-center text-white mb-3 sm:mb-4 shadow-sm`}>
+          <div key={i} className="bg-white rounded-lg p-4 sm:p-5 shadow-md hover:shadow-lg transition-shadow duration-200 border border-gray-100 h-[120px] sm:h-[140px]">
+            <div className="flex flex-col items-start h-full">
+              <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full ${stat.icon} flex items-center justify-center text-white mb-3 sm:mb-4 shadow-sm flex-shrink-0`}>
                 <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
               </div>
-              <div className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">{stat.value}</div>
-              <div className="text-xs sm:text-sm text-gray-500">{stat.label}</div>
+              <div className="flex-1 w-full">
+                {statsLoading ? (
+                  <>
+                    <div className="h-8 sm:h-9 w-16 sm:w-20 bg-gray-200 rounded animate-pulse mb-1"></div>
+                    <div className="h-3 sm:h-4 w-24 sm:w-32 bg-gray-200 rounded animate-pulse"></div>
+                  </>
+                ) : (
+                  <>
+                    <div className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">{stat.value}</div>
+                    <div className="text-xs sm:text-sm text-gray-500">{stat.label}</div>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         ))}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-        {/* Next Up To Be Seated */}
-        <div className="lg:col-span-2 bg-white rounded-lg p-4 sm:p-6 shadow-md hover:shadow-lg transition-shadow duration-200 border border-gray-100">
-          <h3 className="text-[#5D3FD3] font-semibold mb-4">Waiting Queue ({queueCustomers.length})</h3>
+        {/* Next Up To Be Seated - Fixed height to prevent layout shift */}
+        <div className="lg:col-span-2 bg-white rounded-lg p-4 sm:p-6 shadow-md hover:shadow-lg transition-shadow duration-200 border border-gray-100 min-h-[320px]">
+          <h3 className="text-[#5D3FD3] font-semibold mb-4">
+            Waiting Queue {!queueLoading && `(${queueCustomers.length})`}
+          </h3>
           <div className="border-t border-gray-100 pt-4">
-            {queueCustomers.length === 0 ? (
-              <p className="text-sm text-gray-500 italic py-4">Waiting queue is empty.</p>
-            ) : (
-              <div className="space-y-3 max-h-64 overflow-y-auto">
-                {queueCustomers.map((customer, index) => (
-                  <div key={customer.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-[#5D3FD3] text-white flex items-center justify-center font-bold text-sm">
-                        {index + 1}
-                      </div>
-                      <div>
-                        <p className="font-semibold text-gray-900">{customer.customerName}</p>
-                        <p className="text-xs text-gray-500">Party of {customer.partySize} • Wait: {customer.waitTime} min</p>
+            <div className="min-h-[240px]">
+              {queueLoading ? (
+                <div className="space-y-3">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                      <div className="w-8 h-8 rounded-full bg-gray-200 animate-pulse"></div>
+                      <div className="flex-1">
+                        <div className="h-4 w-32 bg-gray-200 rounded animate-pulse mb-2"></div>
+                        <div className="h-3 w-24 bg-gray-200 rounded animate-pulse"></div>
                       </div>
                     </div>
-                    {customer.phone && (
-                      <p className="text-xs text-gray-500 hidden sm:block">{customer.phone}</p>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
+                  ))}
+                </div>
+              ) : queueCustomers.length === 0 ? (
+                <div className="flex items-center justify-center h-full">
+                  <p className="text-sm text-gray-500 italic">Waiting queue is empty.</p>
+                </div>
+              ) : (
+                <div className="space-y-3 max-h-64 overflow-y-auto">
+                  {queueCustomers.map((customer, index) => (
+                    <div key={customer.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-[#5D3FD3] text-white flex items-center justify-center font-bold text-sm">
+                          {index + 1}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-gray-900">{customer.customerName}</p>
+                          <p className="text-xs text-gray-500">Party of {customer.partySize} • Wait: {customer.waitTime} min</p>
+                        </div>
+                      </div>
+                      {customer.phone && (
+                        <p className="text-xs text-gray-500 hidden sm:block">{customer.phone}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 

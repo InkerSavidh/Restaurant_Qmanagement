@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { getQueue, addToQueue, removeFromQueue, runAllocator, QueueEntry } from '../../api/queue.api';
 import { getAllTables } from '../../api/tables.api';
 import axiosInstance from '../../api/axiosInstance';
-import { useSocket } from '../../hooks/useSocket';
+import { useSocket } from '../../hooks/useSocketManager';
 import { ConnectionStatus } from '../../Components/ConnectionStatus';
 
 interface Table {
@@ -41,7 +41,8 @@ const QueueManagement: React.FC = () => {
       console.error('Error fetching queue:', error);
       setQueue([]);
     } finally {
-      setLoading(false);
+      // Reduce loading time for better perceived performance
+      setTimeout(() => setLoading(false), 50);
     }
   };
 
@@ -50,10 +51,30 @@ const QueueManagement: React.FC = () => {
     fetchTables();
   }, []);
 
-  // WebSocket real-time updates
+  // WebSocket handlers for incremental updates
+  const handleQueueAdded = (data: QueueEntry) => {
+    setQueue(prev => [...prev, data]);
+  };
+
+  const handleQueueRemoved = (data: { id: string }) => {
+    setQueue(prev => prev.filter(q => q.id !== data.id));
+  };
+
+  const handleTableStatusChanged = (data: { tableId: string; status: string }) => {
+    if (data.status === 'AVAILABLE') {
+      // Refresh tables to show newly available table
+      fetchTables();
+    } else {
+      // Remove from available tables
+      setTables(prev => prev.filter(t => t.id !== data.tableId));
+    }
+  };
+
+  // WebSocket real-time updates with incremental data
   const { connectionStatus, error } = useSocket({
-    'queue:updated': fetchQueue,
-    'table:updated': fetchTables,
+    'queue:added': handleQueueAdded,
+    'queue:removed': handleQueueRemoved,
+    'table:statusChanged': handleTableStatusChanged,
   });
 
   const handleAddCustomer = async (e: React.FormEvent) => {
@@ -87,8 +108,8 @@ const QueueManagement: React.FC = () => {
     
     try {
       await addToQueue(customerData);
-      // Refresh to get real data from server
-      await fetchQueue();
+      // WebSocket will handle adding the real data, remove optimistic entry
+      setQueue(prev => prev.filter(q => q.id !== optimisticEntry.id));
     } catch (error) {
       console.error('Failed to add customer:', error);
       // Remove optimistic entry on failure
@@ -131,8 +152,7 @@ const QueueManagement: React.FC = () => {
       });
       setSelectedCustomer(''); 
       setSelectedTables([]);
-      await fetchQueue();
-      await fetchTables();
+      // WebSocket will handle queue and table updates automatically
     } catch (error: any) { 
       console.error('Failed to seat customer:', error);
       // Restore queue on error
@@ -144,7 +164,7 @@ const QueueManagement: React.FC = () => {
   const handleRunAllocator = async () => {
     try {
       await runAllocator();
-      fetchQueue();
+      // WebSocket will handle queue updates automatically
     } catch (error) { console.error('No customers to allocate:', error); }
   };
 
@@ -155,8 +175,7 @@ const QueueManagement: React.FC = () => {
     
     try {
       await removeFromQueue(id);
-      // Refresh to sync with server
-      await fetchQueue();
+      // WebSocket will handle the removal confirmation
     } catch (error) { 
       console.error('Failed to remove:', error);
       // Restore on failure
