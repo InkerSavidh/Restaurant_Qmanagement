@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { getDashboardStats, getSeatedPartiesPerHour } from '../../api/analytics.api';
 import { getQueue, QueueEntry } from '../../api/queue.api';
 import { useSocket } from '../../hooks/useSocketManager';
@@ -179,42 +179,44 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  // WebSocket handlers for incremental updates
-  const handleQueueAdded = (data: QueueEntry) => {
+  // Memoized WebSocket handlers for incremental updates
+  const handleQueueAdded = useCallback((data: QueueEntry) => {
     setQueueCustomers(prev => [...prev, data]);
     fetchStatsOnly(); // Only refresh stats, not full queue
-  };
+  }, []);
 
-  const handleQueueRemoved = (data: { id: string }) => {
+  const handleQueueRemoved = useCallback((data: { id: string }) => {
     setQueueCustomers(prev => prev.filter(q => q.id !== data.id));
     fetchStatsOnly();
-  };
+  }, []);
 
-  const handleTableStatusChanged = () => {
+  const handleTableStatusChanged = useCallback(() => {
     fetchStatsOnly(); // Only refresh stats
-  };
+  }, []);
 
-  const handleSeatingCreated = () => {
+  const handleSeatingCreated = useCallback(() => {
     fetchStatsOnly();
-  };
+  }, []);
 
-  const handleSeatingEnded = () => {
+  const handleSeatingEnded = useCallback(() => {
     fetchStatsOnly();
-  };
+  }, []);
 
   useEffect(() => {
     fetchDashboardData();
     // No polling - rely on WebSocket for updates
   }, []);
 
-  // WebSocket real-time updates with incremental data
-  useSocket({
+  // Memoize WebSocket events to prevent reconnections
+  const socketEvents = useMemo(() => ({
     'queue:added': handleQueueAdded,
     'queue:removed': handleQueueRemoved,
     'table:statusChanged': handleTableStatusChanged,
     'seating:created': handleSeatingCreated,
     'seating:ended': handleSeatingEnded,
-  });
+  }), []);
+
+  useSocket(socketEvents);
 
   const statCards = [
     { icon: 'bg-blue-500', label: 'Customers in Queue', value: stats.customersInQueue.toString() },
@@ -235,14 +237,14 @@ const Dashboard: React.FC = () => {
       {/* Stats Cards - Fixed height to prevent layout shift */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3 sm:gap-4 mb-4 sm:mb-6">
         {statCards.map((stat, i) => (
-          <div key={i} className="bg-white rounded-lg p-4 sm:p-5 shadow-md hover:shadow-lg transition-shadow duration-200 border border-gray-100 h-[120px] sm:h-[140px]">
-            <div className="flex flex-col items-start h-full">
-              <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full ${stat.icon} flex items-center justify-center text-white mb-3 sm:mb-4 shadow-sm flex-shrink-0`}>
+          <div key={i} className="bg-white rounded-lg p-3 sm:p-4 shadow-md hover:shadow-lg transition-shadow duration-200 border border-gray-100 h-[130px] sm:h-[150px]">
+            <div className="flex flex-col h-full">
+              <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full ${stat.icon} flex items-center justify-center text-white mb-2 sm:mb-3 shadow-sm flex-shrink-0`}>
                 <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
               </div>
-              <div className="flex-1 w-full">
+              <div className="flex-1 w-full flex flex-col justify-center overflow-hidden">
                 {statsLoading ? (
                   <>
                     <div className="h-8 sm:h-9 w-16 sm:w-20 bg-gray-200 rounded animate-pulse mb-1"></div>
@@ -250,8 +252,8 @@ const Dashboard: React.FC = () => {
                   </>
                 ) : (
                   <>
-                    <div className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">{stat.value}</div>
-                    <div className="text-xs sm:text-sm text-gray-500">{stat.label}</div>
+                    <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 mb-1 leading-tight">{stat.value}</div>
+                    <div className="text-[10px] sm:text-xs lg:text-sm text-gray-500 leading-tight break-words hyphens-auto">{stat.label}</div>
                   </>
                 )}
               </div>

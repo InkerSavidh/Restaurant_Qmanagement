@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { getTablesByFloor, updateTableStatus, getFloors, createTable, deleteTable } from '../../api/tables.api';
 import { useSocket } from '../../hooks/useSocketManager';
 import { useThrottle } from '../../hooks/useDebounce';
@@ -48,51 +48,91 @@ const TableStatus: React.FC = () => {
     setTables(mockTables);
   };
 
-  const fetchTables = async () => {
+  const lastFetchRef = useRef<string>('');
+
+  const fetchTablesInternal = async () => {
+    const currentFloor = activeFloor;
+    
+    // Prevent duplicate calls for same floor
+    if (lastFetchRef.current === currentFloor) {
+      console.log('⚠️ Tables already being fetched for floor:', currentFloor);
+      return;
+    }
+    
+    lastFetchRef.current = currentFloor;
+    console.log('📋 Fetching tables for floor:', currentFloor);
+    
     try {
-      const data = await getTablesByFloor(activeFloor);
+      const data = await getTablesByFloor(currentFloor);
       setTables(sortTablesByNumber(data));
+      console.log('✅ Tables loaded:', data.length);
     } catch (error) {
+      console.error('❌ Error fetching tables:', error);
       generateMockTables();
     } finally {
-      // Reduce loading time for better perceived performance
-      setTimeout(() => setLoading(false), 50);
+      // Reset after a delay to allow future fetches
+      setTimeout(() => {
+        lastFetchRef.current = '';
+        setLoading(false);
+      }, 100);
     }
   };
 
-  const fetchFloors = async () => {
+  // Debounce fetchTables to prevent rapid successive calls
+  const fetchTables = useCallback(
+    useThrottle(fetchTablesInternal, 500), // 500ms throttle
+    [activeFloor]
+  );
+
+  const floorsLoadedRef = useRef(false);
+
+  const fetchFloors = useCallback(async () => {
+    // Prevent double calls in React StrictMode
+    if (floorsLoadedRef.current) {
+      console.log('⚠️ Floors already loaded, skipping fetch');
+      return;
+    }
+    
+    floorsLoadedRef.current = true;
+    console.log('🏢 Fetching floors (first time only)');
+    
     try {
       const data = await getFloors();
       if (data && data.length > 0) {
+        console.log('✅ Floors loaded:', data.length);
         setFloors(data);
         setActiveFloor(data[0].id);
       }
     } catch (error) {
-      // Use default floors
+      // Reset flag on error so it can retry
+      floorsLoadedRef.current = false;
+      console.error('❌ Error fetching floors:', error);
     }
-  };
+  }, []);
 
-  // WebSocket handlers for incremental updates
-  const handleTableStatusChanged = (data: { tableId: string; status: string }) => {
+  // Memoized WebSocket handlers to prevent recreation
+  const handleTableStatusChanged = useCallback((data: { tableId: string; status: string }) => {
     setTables(prev => prev.map(t => 
       t.id === data.tableId ? { ...t, status: data.status } : t
     ));
-  };
+  }, []);
 
-  const handleTableCreated = () => {
+  const handleTableCreated = useCallback(() => {
     fetchTables(); // Fetch all when new table added
-  };
+  }, [fetchTables]);
 
-  const handleTableDeleted = () => {
-    fetchTables(); // Fetch all when table deleted
-  };
+  const handleTableDeleted = useCallback(() => {
+    fetchTables(); // Fetch all when table deleted  
+  }, [fetchTables]);
 
-  // WebSocket real-time updates with incremental data
-  const { connectionStatus, error } = useSocket({
+  // Memoize WebSocket events to prevent reconnections
+  const socketEvents = useMemo(() => ({
     'table:statusChanged': handleTableStatusChanged,
     'table:created': handleTableCreated,
     'table:deleted': handleTableDeleted,
-  });
+  }), [handleTableStatusChanged, handleTableCreated, handleTableDeleted]);
+
+  const { connectionStatus, error } = useSocket(socketEvents);
 
   useEffect(() => {
     fetchFloors();

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { getQueue, addToQueue, removeFromQueue, runAllocator, QueueEntry } from '../../api/queue.api';
 import { getAllTables } from '../../api/tables.api';
 import axiosInstance from '../../api/axiosInstance';
@@ -51,16 +51,16 @@ const QueueManagement: React.FC = () => {
     fetchTables();
   }, []);
 
-  // WebSocket handlers for incremental updates
-  const handleQueueAdded = (data: QueueEntry) => {
+  // Memoized WebSocket handlers for incremental updates
+  const handleQueueAdded = useCallback((data: QueueEntry) => {
     setQueue(prev => [...prev, data]);
-  };
+  }, []);
 
-  const handleQueueRemoved = (data: { id: string }) => {
+  const handleQueueRemoved = useCallback((data: { id: string }) => {
     setQueue(prev => prev.filter(q => q.id !== data.id));
-  };
+  }, []);
 
-  const handleTableStatusChanged = (data: { tableId: string; status: string }) => {
+  const handleTableStatusChanged = useCallback((data: { tableId: string; status: string }) => {
     if (data.status === 'AVAILABLE') {
       // Refresh tables to show newly available table
       fetchTables();
@@ -68,14 +68,16 @@ const QueueManagement: React.FC = () => {
       // Remove from available tables
       setTables(prev => prev.filter(t => t.id !== data.tableId));
     }
-  };
+  }, []);
 
-  // WebSocket real-time updates with incremental data
-  const { connectionStatus, error } = useSocket({
+  // Memoize WebSocket events to prevent reconnections
+  const socketEvents = useMemo(() => ({
     'queue:added': handleQueueAdded,
     'queue:removed': handleQueueRemoved,
     'table:statusChanged': handleTableStatusChanged,
-  });
+  }), []);
+
+  const { connectionStatus, error } = useSocket(socketEvents);
 
   const handleAddCustomer = async (e: React.FormEvent) => {
     e.preventDefault();

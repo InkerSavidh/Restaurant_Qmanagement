@@ -1,5 +1,5 @@
 // frontend/hooks/useSocketManager.ts
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 
 const SOCKET_URL = 'http://localhost:3000';
@@ -51,12 +51,13 @@ class SocketManager {
 
     this.socket.on('disconnect', (reason) => {
       console.log('❌ WebSocket disconnected:', reason);
-      this.setConnectionStatus('disconnected');
       
       if (reason === 'io server disconnect') {
-        this.setError('Server disconnected the connection');
+        this.setConnectionStatus('disconnected', 'Server disconnected the connection');
       } else if (reason === 'transport close') {
-        this.setError('Connection lost. Attempting to reconnect...');
+        this.setConnectionStatus('disconnected', 'Connection lost. Attempting to reconnect...');
+      } else {
+        this.setConnectionStatus('disconnected');
       }
     });
 

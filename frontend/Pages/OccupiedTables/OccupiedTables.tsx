@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { getActiveSeating, endSeatingSession, SeatedParty } from '../../api/seating.api';
 import { useSocket } from '../../hooks/useSocketManager';
 import { ConnectionStatus } from '../../Components/ConnectionStatus';
@@ -16,27 +16,58 @@ const OccupiedTables: React.FC = () => {
   const [seatedParties, setSeatedParties] = useState<SeatedParty[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const fetchSeatedParties = async () => {
+  const seatingLoadedRef = useRef(false);
+
+  const fetchSeatedParties = useCallback(async () => {
+    // Prevent double calls in React StrictMode
+    if (seatingLoadedRef.current) {
+      console.log('⚠️ Seating data already being fetched, skipping duplicate call');
+      return;
+    }
+    
+    seatingLoadedRef.current = true;
+    console.log('🪑 Fetching seated parties (first time only)');
+    
     try {
       const data = await getActiveSeating();
       setSeatedParties(data);
+      console.log('✅ Seated parties loaded:', data.length);
     } catch (error) {
-      console.error('Error fetching seated parties:', error);
+      console.error('❌ Error fetching seated parties:', error);
       setSeatedParties([]);
+      // Reset flag on error so it can retry
+      seatingLoadedRef.current = false;
     } finally {
-      setLoading(false);
+      // Reset after a delay to allow future fetches
+      setTimeout(() => {
+        seatingLoadedRef.current = false;
+        setLoading(false);
+      }, 100);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchSeatedParties();
-  }, []);
+  }, [fetchSeatedParties]);
 
-  // WebSocket real-time updates
-  const { connectionStatus, error } = useSocket({
-    'seating:created': fetchSeatedParties,
-    'seating:ended': fetchSeatedParties,
-  });
+  // Memoized WebSocket handlers to prevent recreation
+  const handleSeatingCreated = useCallback(() => {
+    console.log('🔔 Seating created - refreshing data');
+    fetchSeatedParties();
+  }, [fetchSeatedParties]);
+
+  const handleSeatingEnded = useCallback(() => {
+    console.log('🔔 Seating ended - refreshing data');
+    fetchSeatedParties();
+  }, [fetchSeatedParties]);
+
+  // Memoize WebSocket events to prevent reconnections
+  const socketEvents = useMemo(() => ({
+    'seating:created': handleSeatingCreated,
+    'seating:ended': handleSeatingEnded,
+  }), [handleSeatingCreated, handleSeatingEnded]);
+
+  const { connectionStatus, error } = useSocket(socketEvents);
 
   // Group parties by customer name and phone (within 5 minutes)
   const groupedParties: GroupedParty[] = seatedParties.reduce((acc: GroupedParty[], party) => {
