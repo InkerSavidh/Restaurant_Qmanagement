@@ -10,5 +10,6 @@ router.get('/active', seatingController.getActiveSeating);
 router.post('/seat', seatingController.seatCustomer);
 router.post('/seat-multiple', seatingController.seatCustomerMultipleTables);
 router.post('/end/:sessionId', seatingController.endSeatingSession);
+router.post('/end-all/:sessionId', seatingController.endAllSeatingSessionsForCustomer);
 
 export default router;

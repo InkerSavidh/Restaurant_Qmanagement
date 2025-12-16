@@ -52,3 +52,13 @@ export const endSeatingSession = async (req, res, next) => {
     next(error);
   }
 };
+
+export const endAllSeatingSessionsForCustomer = async (req, res, next) => {
+  try {
+    const { sessionId } = req.params;
+    const result = await seatingService.endAllSeatingSessionsForCustomer(sessionId);
+    return successResponse(res, 'All customer seating sessions ended', result);
+  } catch (error) {
+    next(error);
+  }
+};
