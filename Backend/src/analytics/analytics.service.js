@@ -53,17 +53,31 @@ export const getSeatedPartiesPerHour = async () => {
       select: { seatedAt: true },
     });
     
+    // Initialize all 24 hours with 0 count
     const hourCounts = {};
-    for (let i = 0; i < 24; i++) hourCounts[i] = 0;
+    for (let i = 0; i < 24; i++) {
+      hourCounts[i] = 0;
+    }
     
+    // Count sessions by hour
     sessions.forEach(s => {
       const hour = new Date(s.seatedAt).getHours();
       hourCounts[hour]++;
     });
     
-    return Object.entries(hourCounts).map(([hour, count]) => ({
-      hour: parseInt(hour),
-      count,
-    }));
+    // Return only hours from current hour backwards to show relevant data
+    const currentHour = new Date().getHours();
+    const relevantHours = [];
+    
+    // Show last 12 hours including current hour
+    for (let i = 11; i >= 0; i--) {
+      const hour = (currentHour - i + 24) % 24;
+      relevantHours.push({
+        hour: `${hour.toString().padStart(2, '0')}:00`,
+        count: hourCounts[hour],
+      });
+    }
+    
+    return relevantHours;
   }, 300); // Cache for 5 minutes
 };

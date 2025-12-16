@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { getActiveSeating, endSeatingSession, SeatedParty } from '../../api/seating.api';
 import { useSocket } from '../../hooks/useSocketManager';
 import { ConnectionStatus } from '../../Components/ConnectionStatus';
+import { useToast } from '../../hooks/useToast';
 
 interface GroupedParty {
   customerName: string;
@@ -17,6 +18,7 @@ const OccupiedTables: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   const seatingLoadedRef = useRef(false);
+  const { showConfirmation, showSuccess, showError } = useToast();
 
   const fetchSeatedParties = useCallback(async () => {
     // Prevent double calls in React StrictMode
@@ -69,19 +71,20 @@ const OccupiedTables: React.FC = () => {
 
   const { connectionStatus, error } = useSocket(socketEvents);
 
-  // Group parties by customer name and phone (within 5 minutes)
+  // Group parties by customer name, phone, and party size (within 2 minutes)
   const groupedParties: GroupedParty[] = seatedParties.reduce((acc: GroupedParty[], party) => {
     const partyTime = new Date(party.seatedAt).getTime();
     
     const existing = acc.find((p) => {
       const existingTime = new Date(p.seatedAt).getTime();
       const timeDiff = Math.abs(partyTime - existingTime);
-      const fiveMinutes = 5 * 60 * 1000; // 5 minutes in milliseconds
+      const twoMinutes = 2 * 60 * 1000; // 2 minutes in milliseconds (stricter grouping)
       
       return (
         p.customerName === party.customerName &&
         p.phone === party.phone &&
-        timeDiff < fiveMinutes
+        p.partySize === party.partySize && // Also match party size
+        timeDiff < twoMinutes
       );
     });
     
@@ -106,24 +109,39 @@ const OccupiedTables: React.FC = () => {
     return acc;
   }, []);
 
-  const handleCheckout = async (sessionIds: string[], customerName: string) => {
-    if (!confirm(`Checkout ${customerName} from ${sessionIds.length} table(s)?`)) return;
+  const handleCheckout = (sessionIds: string[], customerName: string) => {
+    const tableText = sessionIds.length === 1 ? 'table' : 'tables';
+    const message = `Checkout ${customerName} from ${sessionIds.length} ${tableText}?`;
     
-    // Remove from UI immediately
-    const previousParties = [...seatedParties];
-    setSeatedParties(prev => prev.filter(p => !sessionIds.includes(p.id)));
-    
-    try {
-      // Checkout only the first session - backend will handle all sessions for this customer
-      await endSeatingSession(sessionIds[0]);
-      // Refresh to sync with backend
-      await fetchSeatedParties();
-    } catch (error: any) {
-      console.error('Failed to checkout:', error);
-      // Restore on error
-      setSeatedParties(previousParties);
-      alert(error.response?.data?.message || 'Failed to checkout customer');
-    }
+    showConfirmation(
+      message,
+      async () => {
+        // Remove from UI immediately for better UX
+        const previousParties = [...seatedParties];
+        setSeatedParties(prev => prev.filter(p => !sessionIds.includes(p.id)));
+        
+        try {
+          // Checkout the first session - backend will handle all related sessions for this seating event
+          await endSeatingSession(sessionIds[0]);
+          // Refresh to sync with backend
+          await fetchSeatedParties();
+          showSuccess(`${customerName} checked out successfully`);
+        } catch (error: any) {
+          console.error('Failed to checkout:', error);
+          // Restore on error
+          setSeatedParties(previousParties);
+          showError(error.response?.data?.message || 'Failed to checkout customer');
+        }
+      },
+      () => {
+        // Cancel callback - do nothing
+      },
+      {
+        confirmText: 'Checkout',
+        cancelText: 'Cancel',
+        duration: 8000
+      }
+    );
   };
 
   const formatTime = (dateString: string) => {

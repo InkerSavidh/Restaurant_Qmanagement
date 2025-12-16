@@ -4,6 +4,7 @@ import { getAllTables } from '../../api/tables.api';
 import axiosInstance from '../../api/axiosInstance';
 import { useSocket } from '../../hooks/useSocketManager';
 import { ConnectionStatus } from '../../Components/ConnectionStatus';
+import { useToast } from '../../hooks/useToast';
 
 interface Table {
   id: string;
@@ -23,6 +24,7 @@ const QueueManagement: React.FC = () => {
   const [newCustomer, setNewCustomer] = useState({ name: '', partySize: '', phone: '' });
   const [selectedCustomer, setSelectedCustomer] = useState('');
   const [selectedTables, setSelectedTables] = useState<string[]>([]);
+  const { showSuccess, showError } = useToast();
 
   const fetchTables = async () => {
     try {
@@ -82,7 +84,7 @@ const QueueManagement: React.FC = () => {
   const handleAddCustomer = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCustomer.name || !newCustomer.partySize) {
-      alert('Please fill in required fields');
+      showError('Please fill in required fields');
       return;
     }
     
@@ -112,11 +114,12 @@ const QueueManagement: React.FC = () => {
       await addToQueue(customerData);
       // WebSocket will handle adding the real data, remove optimistic entry
       setQueue(prev => prev.filter(q => q.id !== optimisticEntry.id));
+      showSuccess(`${customerData.name} added to queue`);
     } catch (error) {
       console.error('Failed to add customer:', error);
       // Remove optimistic entry on failure
       setQueue(prev => prev.filter(q => q.id !== optimisticEntry.id));
-      alert('Failed to add customer');
+      showError('Failed to add customer');
     }
   };
 
@@ -129,8 +132,8 @@ const QueueManagement: React.FC = () => {
   };
 
   const handleSeatCustomer = async () => {
-    if (!selectedCustomer) { alert('Please select a customer'); return; }
-    if (selectedTables.length === 0) { alert('Please select at least one table'); return; }
+    if (!selectedCustomer) { showError('Please select a customer'); return; }
+    if (selectedTables.length === 0) { showError('Please select at least one table'); return; }
     
     const customer = queue.find(q => q.id === selectedCustomer);
     const totalCapacity = selectedTables.reduce((sum, tableId) => {
@@ -139,7 +142,7 @@ const QueueManagement: React.FC = () => {
     }, 0);
 
     if (customer && totalCapacity < customer.partySize) {
-      alert(`Selected tables capacity (${totalCapacity}) is less than party size (${customer.partySize})`);
+      showError(`Selected tables capacity (${totalCapacity}) is less than party size (${customer.partySize})`);
       return;
     }
 
@@ -154,12 +157,13 @@ const QueueManagement: React.FC = () => {
       });
       setSelectedCustomer(''); 
       setSelectedTables([]);
+      showSuccess(`${customer?.customerName} seated successfully`);
       // WebSocket will handle queue and table updates automatically
     } catch (error: any) { 
       console.error('Failed to seat customer:', error);
       // Restore queue on error
       setQueue(previousQueue);
-      alert(error.response?.data?.message || 'Failed to seat customer');
+      showError(error.response?.data?.message || 'Failed to seat customer');
     }
   };
 
@@ -182,7 +186,7 @@ const QueueManagement: React.FC = () => {
       console.error('Failed to remove:', error);
       // Restore on failure
       setQueue(previousQueue);
-      alert('Failed to remove customer');
+      showError('Failed to remove customer');
     }
   };
 

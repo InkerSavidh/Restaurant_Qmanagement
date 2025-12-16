@@ -228,17 +228,23 @@ export const endSeatingSession = async (sessionId) => {
     }
   }
   
-  // Find ALL sessions for this SPECIFIC seating (same queueEntryId)
-  // For multi-table seating, all sessions are created at the same time with the same queueEntryId
-  const allSessions = await prisma.seatingSession.findMany({
-    where: { 
-      queueEntryId: session.queueEntryId,
-      endedAt: null, // Only get active sessions (not already checked out)
-    },
-    include: { table: true },
-  });
+  // Find ALL sessions for this SPECIFIC seating (same queueEntryId AND same seatedAt time)
+  // For multi-table seating, all sessions are created at the same time with the same queueEntryId and seatedAt
+  // Only find sessions if this customer was seated at multiple tables (queueEntryId exists)
+  let allSessions = [session]; // Default to just this session
   
-  console.log(`📊 Found ${allSessions.length} active sessions for this customer:`, allSessions.map(s => ({ 
+  if (session.queueEntryId) {
+    // Find other sessions from the same seating event (same queueEntryId and seatedAt time)
+    allSessions = await prisma.seatingSession.findMany({
+      where: { 
+        queueEntryId: session.queueEntryId,
+        seatedAt: session.seatedAt, // Ensure same seating event (within same second)
+      },
+      include: { table: true },
+    });
+  }
+  
+  console.log(`📊 Found ${allSessions.length} sessions for this seating event:`, allSessions.map(s => ({ 
     id: s.id, 
     tableNumber: s.table.tableNumber,
     queueEntryId: s.queueEntryId,
@@ -308,7 +314,7 @@ export const endSeatingSession = async (sessionId) => {
     data: { status: 'AVAILABLE' },
   });
   
-  // Delete all sessions for this customer (using the session IDs we found)
+  // Delete all sessions for this seating event (using the session IDs we found)
   const sessionIdsToDelete = allSessions.map(s => s.id);
   const deleteResult = await prisma.seatingSession.deleteMany({
     where: { 

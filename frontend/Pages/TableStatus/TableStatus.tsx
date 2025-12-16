@@ -3,6 +3,7 @@ import { getTablesByFloor, updateTableStatus, getFloors, createTable, deleteTabl
 import { useSocket } from '../../hooks/useSocketManager';
 import { useThrottle } from '../../hooks/useDebounce';
 import { ConnectionStatus } from '../../Components/ConnectionStatus';
+import { useToast } from '../../hooks/useToast';
 
 interface Table {
   id: string;
@@ -27,6 +28,7 @@ const TableStatus: React.FC = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [newTableNumber, setNewTableNumber] = useState('');
   const [newTableCapacity, setNewTableCapacity] = useState(4);
+  const { showSuccess, showError } = useToast();
   const [editingTable, setEditingTable] = useState<Table | null>(null);
 
   const sortTablesByNumber = (tables: Table[]) => {
@@ -162,7 +164,7 @@ const TableStatus: React.FC = () => {
       setTables(prev => prev.map(t => 
         t.id === tableId ? { ...t, status: currentStatus } : t
       ));
-      alert('Failed to update table status');
+      showError('Failed to update table status');
     }
   };
 
@@ -171,7 +173,7 @@ const TableStatus: React.FC = () => {
 
   const handleAddTable = async () => {
     if (!newTableNumber.trim()) {
-      alert('Please enter a table number');
+      showError('Please enter a table number');
       return;
     }
     try {
@@ -183,8 +185,9 @@ const TableStatus: React.FC = () => {
       setNewTableNumber('');
       setNewTableCapacity(4);
       fetchTables();
+      showSuccess(`Table ${newTableNumber} added successfully`);
     } catch (error: any) {
-      alert(error.response?.data?.message || 'Failed to add table');
+      showError(error.response?.data?.message || 'Failed to add table');
     }
   };
 
@@ -193,8 +196,9 @@ const TableStatus: React.FC = () => {
     try {
       await deleteTable(tableId);
       fetchTables();
+      showSuccess('Table deleted successfully');
     } catch (error: any) {
-      alert(error.response?.data?.message || 'Failed to delete table');
+      showError(error.response?.data?.message || 'Failed to delete table');
     }
   };
 
