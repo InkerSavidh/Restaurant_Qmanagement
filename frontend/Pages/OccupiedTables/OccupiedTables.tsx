@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { getActiveSeating, endSeatingSession, endAllSeatingSessionsForCustomer, SeatedParty } from '../../api/seating.api';
+import { getActiveSeating, endSeatingSession, SeatedParty } from '../../api/seating.api';
 import { useSocket } from '../../hooks/useSocketManager';
 import { ConnectionStatus } from '../../Components/ConnectionStatus';
 import { useToast } from '../../hooks/useToast';
@@ -79,33 +79,20 @@ const OccupiedTables: React.FC = () => {
 
   const { connectionStatus, error } = useSocket(socketEvents);
 
-<<<<<<< HEAD
   // Group parties by customer name, phone, and party size (within 2 minutes)
-=======
-  // Group parties ONLY if they are the exact same allocation (same customer, same allocation time)
->>>>>>> a161d8f41f9e2c93314c9b6212100c1effb3b764
   const groupedParties: GroupedParty[] = seatedParties.reduce((acc: GroupedParty[], party) => {
     const partyTime = new Date(party.seatedAt).getTime();
     
     const existing = acc.find((p) => {
       const existingTime = new Date(p.seatedAt).getTime();
       const timeDiff = Math.abs(partyTime - existingTime);
-<<<<<<< HEAD
       const twoMinutes = 2 * 60 * 1000; // 2 minutes in milliseconds (stricter grouping)
-=======
-      const thirtySeconds = 30 * 1000; // Only 30 seconds window (very strict)
->>>>>>> a161d8f41f9e2c93314c9b6212100c1effb3b764
       
       const shouldGroup = (
         p.customerName.toLowerCase().trim() === party.customerName.toLowerCase().trim() &&
         p.phone === party.phone &&
-<<<<<<< HEAD
         p.partySize === party.partySize && // Also match party size
         timeDiff < twoMinutes
-=======
-        p.partySize === party.partySize && // Must match exactly
-        timeDiff < thirtySeconds // Must be seated almost simultaneously (same allocation)
->>>>>>> a161d8f41f9e2c93314c9b6212100c1effb3b764
       );
       
       if (shouldGroup) {
@@ -157,7 +144,6 @@ const OccupiedTables: React.FC = () => {
     phone: p.phone
   })));
 
-<<<<<<< HEAD
   const handleCheckout = (sessionIds: string[], customerName: string) => {
     const tableText = sessionIds.length === 1 ? 'table' : 'tables';
     const message = `Checkout ${customerName} from ${sessionIds.length} ${tableText}?`;
@@ -191,96 +177,6 @@ const OccupiedTables: React.FC = () => {
         duration: 8000
       }
     );
-=======
-  const handleCheckout = async (sessionIds: string[], customerName: string, isCheckoutAll: boolean = false) => {
-    console.log('🔄 Checkout requested for:', { 
-      customerName, 
-      sessionIds, 
-      tableCount: sessionIds.length,
-      isCheckoutAll,
-      affectedTables: seatedParties.filter(p => sessionIds.includes(p.id)).map(p => ({ id: p.id, table: p.tableNumber, customer: p.customerName }))
-    });
-    
-    // Show detailed confirmation with all affected sessions
-    const affectedSessions = seatedParties.filter(p => sessionIds.includes(p.id));
-    const actionType = isCheckoutAll ? 'Checkout ALL tables for' : 'Checkout';
-    const confirmMessage = `${actionType} ${customerName} from ${sessionIds.length} table(s)?\n\n` +
-      `Tables: ${affectedSessions.map(p => p.tableNumber).join(', ')}\n` +
-      `Session IDs: ${sessionIds.join(', ')}\n\n` +
-      `This will ONLY affect ${customerName}'s sessions.`;
-    
-    if (!confirm(confirmMessage)) return;
-    
-    // Log all current parties before checkout for debugging
-    console.log('📋 All parties before checkout:', seatedParties.map(p => ({ 
-      id: p.id, 
-      customer: p.customerName, 
-      table: p.tableNumber,
-      phone: p.phone 
-    })));
-    
-    // Remove ONLY the specific sessions from UI immediately
-    const previousParties = [...seatedParties];
-    setSeatedParties(prev => prev.filter(p => !sessionIds.includes(p.id)));
-    
-    try {
-      if (isCheckoutAll && sessionIds.length > 1) {
-        // Use the new bulk checkout API for multiple sessions
-        console.log('🏁 Ending ALL sessions for customer using bulk API');
-        await endAllSeatingSessionsForCustomer(sessionIds[0]); // Pass any session ID from the customer
-        console.log('✅ All sessions ended successfully for customer');
-      } else {
-        // Single session checkout or individual table checkout
-        let successCount = 0;
-        let errorCount = 0;
-        
-        for (const sessionId of sessionIds) {
-          const session = seatedParties.find(p => p.id === sessionId);
-          console.log('🏁 Ending session:', { 
-            sessionId, 
-            customer: session?.customerName, 
-            table: session?.tableNumber 
-          });
-          
-          try {
-            await endSeatingSession(sessionId);
-            console.log('✅ Session ended successfully:', sessionId);
-            successCount++;
-          } catch (sessionError: any) {
-            console.error('❌ Failed to end session:', sessionId, sessionError);
-            errorCount++;
-            
-            // If it's a 500 error, don't continue - backend might be corrupted
-            if (sessionError.response?.status === 500) {
-              throw new Error(`Backend error (500) when ending session ${sessionId}. Stopping to prevent data corruption.`);
-            }
-          }
-        }
-        
-        console.log(`✅ Checkout summary for ${customerName}: ${successCount} success, ${errorCount} errors`);
-        
-        if (successCount === 0) {
-          // No sessions were ended successfully, restore UI
-          console.log('⚠️ No sessions ended successfully, restoring UI');
-          setSeatedParties(previousParties);
-          alert('No sessions could be ended. Please try again or contact support.');
-          return;
-        }
-      }
-      
-      // Refresh data after successful checkout
-      setTimeout(async () => {
-        console.log('🔄 Refreshing data after successful checkout...');
-        await fetchSeatedParties();
-      }, 500);
-      
-    } catch (error: any) {
-      console.error('❌ Critical checkout error:', error);
-      // Restore on critical error
-      setSeatedParties(previousParties);
-      alert(`Checkout failed: ${error.message || 'Unknown error'}. UI restored to prevent data loss.`);
-    }
->>>>>>> a161d8f41f9e2c93314c9b6212100c1effb3b764
   };
 
   const formatTime = (dateString: string) => {
@@ -348,7 +244,7 @@ const OccupiedTables: React.FC = () => {
                     <div className="text-gray-500">{formatTime(party.seatedAt)}</div>
                     <div>
                       <button
-                        onClick={() => handleCheckout([party.id], `${party.customerName} (Table ${party.tableNumber})`, false)}
+                        onClick={() => handleCheckout([party.id], `${party.customerName} (Table ${party.tableNumber})`)}
                         className="bg-orange-500 hover:bg-orange-600 text-white px-2 py-1 rounded text-xs font-medium"
                       >
                         Checkout Table
@@ -369,7 +265,7 @@ const OccupiedTables: React.FC = () => {
                     <div className="text-gray-500">{formatTime(party.seatedAt)}</div>
                     <div>
                       <button
-                        onClick={() => handleCheckout(party.sessionIds, party.customerName, true)}
+                        onClick={() => handleCheckout(party.sessionIds, party.customerName)}
                         className="bg-[#198754] hover:bg-green-700 text-white px-3 py-1 rounded text-xs font-medium"
                       >
                         Checkout All

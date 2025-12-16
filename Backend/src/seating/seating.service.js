@@ -233,7 +233,6 @@ export const endSeatingSession = async (sessionId) => {
     }
   }
   
-<<<<<<< HEAD
   // Find ALL sessions for this SPECIFIC seating (same queueEntryId AND same seatedAt time)
   // For multi-table seating, all sessions are created at the same time with the same queueEntryId and seatedAt
   // Only find sessions if this customer was seated at multiple tables (queueEntryId exists)
@@ -245,20 +244,19 @@ export const endSeatingSession = async (sessionId) => {
       where: { 
         queueEntryId: session.queueEntryId,
         seatedAt: session.seatedAt, // Ensure same seating event (within same second)
+        endedAt: null, // Only active sessions
       },
       include: { table: true },
     });
   }
   
-  console.log(`📊 Found ${allSessions.length} sessions for this seating event:`, allSessions.map(s => ({ 
+  console.log(`📊 Found ${allSessions.length} active sessions for this seating event:`, allSessions.map(s => ({ 
     id: s.id, 
     tableNumber: s.table.tableNumber,
     queueEntryId: s.queueEntryId,
     seatedAt: s.seatedAt 
   })));
   
-=======
->>>>>>> a161d8f41f9e2c93314c9b6212100c1effb3b764
   // Calculate times
   const endTime = new Date();
   const arrivalTime = new Date(customerInfo.entryTime);
@@ -278,76 +276,55 @@ export const endSeatingSession = async (sessionId) => {
   // Calculate dining time (from seated to checkout) - ensure positive value and cap at reasonable max (e.g., 12 hours)
   const dineTime = Math.min(720, Math.max(0, Math.round((endTime - seatedTime) / 60000)));
   
-  // **CRITICAL FIX**: Only end THIS specific session, not all sessions for the customer
-  // Update ONLY this session's endedAt timestamp
-  const updatedSession = await prisma.seatingSession.update({
-    where: { id: sessionId },
-    data: { endedAt: endTime },
-    include: { table: true },
-  });
+  // Combine table numbers from all sessions
+  const tableNumbers = allSessions.map(s => `T${s.table.tableNumber}`).join(', ');
   
-  // Update ONLY this table's status to AVAILABLE
-  await prisma.table.update({
-    where: { id: session.tableId },
-    data: { status: 'AVAILABLE' },
-  });
-  
-  console.log(`✅ Session ${sessionId} ended for table T${session.table.tableNumber}`);
-  
-  // Check if this was the LAST session for this customer (same queueEntryId)
-  const remainingSessions = await prisma.seatingSession.findMany({
-    where: { 
-      queueEntryId: session.queueEntryId,
-      endedAt: null, // Still active sessions
+  // Check if we already saved history for this exact seating session
+  const existingHistory = await prisma.customerHistory.findFirst({
+    where: {
+      customerName: customerInfo.customerName,
+      seatedTime: seatedTime,
+      partySize: session.partySize,
     },
   });
   
-  console.log(`📊 Remaining active sessions for this customer: ${remainingSessions.length}`);
-  
-  // Only save to customer history when ALL sessions for this customer are ended
-  if (remainingSessions.length === 0 && session.queueEntryId) {
-    // Get all sessions for this customer (including the one we just ended)
-    const allCustomerSessions = await prisma.seatingSession.findMany({
-      where: { queueEntryId: session.queueEntryId },
-      include: { table: true },
-      orderBy: { seatedAt: 'asc' },
-    });
-    
-    // Combine table numbers from all sessions
-    const tableNumbers = allCustomerSessions.map(s => `T${s.table.tableNumber}`).join(', ');
-    
-    // Check if we already saved history for this exact seating session
-    const existingHistory = await prisma.customerHistory.findFirst({
-      where: {
+  if (!existingHistory) {
+    // Save to customer history BEFORE ending sessions
+    await prisma.customerHistory.create({
+      data: {
+        customerId: customerInfo.customerId,
         customerName: customerInfo.customerName,
-        seatedTime: seatedTime,
+        customerPhone: customerInfo.customerPhone || null,
         partySize: session.partySize,
+        tableNumbers,
+        arrivalTime,
+        seatedTime,
+        departedTime: endTime,
+        totalWaitTime: totalWait,
+        totalDiningTime: dineTime,
       },
     });
-    
-    if (!existingHistory) {
-      // Save to customer history
-      await prisma.customerHistory.create({
-        data: {
-          customerId: customerInfo.customerId,
-          customerName: customerInfo.customerName,
-          customerPhone: customerInfo.customerPhone || null,
-          partySize: session.partySize,
-          tableNumbers,
-          arrivalTime,
-          seatedTime,
-          departedTime: endTime,
-          totalWaitTime: totalWait,
-          totalDiningTime: dineTime,
-        },
-      });
-      console.log(`✅ Customer history saved for ${customerInfo.customerName} (party of ${session.partySize}) at tables: ${tableNumbers}`);
-    } else {
-      console.log(`⚠️ Customer history already exists for ${customerInfo.customerName} at ${seatedTime.toISOString()}, skipping duplicate`);
-    }
+    console.log(`✅ Customer history saved for ${customerInfo.customerName} (party of ${session.partySize}) at tables: ${tableNumbers}`);
   } else {
-    console.log(`⏳ Not saving history yet - customer still has ${remainingSessions.length} active sessions`);
+    console.log(`⚠️ Customer history already exists for ${customerInfo.customerName} at ${seatedTime.toISOString()}, skipping duplicate`);
   }
+  
+  // Update all table statuses to AVAILABLE
+  const tableIds = allSessions.map(s => s.tableId);
+  await prisma.table.updateMany({
+    where: { id: { in: tableIds } },
+    data: { status: 'AVAILABLE' },
+  });
+  
+  // Delete all sessions for this seating event (using the session IDs we found)
+  const sessionIdsToDelete = allSessions.map(s => s.id);
+  const deleteResult = await prisma.seatingSession.deleteMany({
+    where: { 
+      id: { in: sessionIdsToDelete }
+    },
+  });
+  
+  console.log(`🗑️ Deleted ${deleteResult.count} seating sessions (expected ${allSessions.length})`);
   
   // Invalidate cache and emit WebSocket events
   cache.delete(CACHE_KEYS.DASHBOARD_STATS);
@@ -356,13 +333,13 @@ export const endSeatingSession = async (sessionId) => {
   
   try {
     const io = getIO();
-    io.emit('seating:ended', { sessionId, tableId: session.tableId });
-    io.emit('table:statusChanged', { tableId: session.tableId, status: 'AVAILABLE' });
+    io.emit('seating:ended', { sessionId, tableIds });
+    tableIds.forEach(tableId => io.emit('table:statusChanged', { tableId, status: 'AVAILABLE' }));
   } catch (error) {
     console.error('WebSocket emit error:', error);
   }
   
-  return updatedSession;
+  return session;
 };
 
 export const endAllSeatingSessionsForCustomer = async (sessionId) => {
@@ -464,9 +441,7 @@ export const endAllSeatingSessionsForCustomer = async (sessionId) => {
     console.log(`✅ Customer history saved for ${customerInfo.customerName} (party of ${session.partySize}) at tables: ${tableNumbers}`);
   }
   
-<<<<<<< HEAD
   // Update all table statuses to AVAILABLE
-  const tableIds = allSessions.map(s => s.tableId);
   await prisma.table.updateMany({
     where: { id: { in: tableIds } },
     data: { status: 'AVAILABLE' },
@@ -481,9 +456,6 @@ export const endAllSeatingSessionsForCustomer = async (sessionId) => {
   });
   
   console.log(`🗑️ Deleted ${deleteResult.count} seating sessions (expected ${allSessions.length})`);
-=======
-  console.log(`✅ Ended ${sessionIds.length} sessions for ${customerInfo.customerName} at tables: ${tableNumbers}`);
->>>>>>> a161d8f41f9e2c93314c9b6212100c1effb3b764
   
   // Invalidate cache and emit WebSocket events
   cache.delete(CACHE_KEYS.DASHBOARD_STATS);
