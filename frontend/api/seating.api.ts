@@ -19,3 +19,8 @@ export const endSeatingSession = async (sessionId: string) => {
   const response = await axiosInstance.post(`/seating/end/${sessionId}`);
   return response.data;
 };
+
+export const endAllSeatingSessionsForCustomer = async (sessionId: string) => {
+  const response = await axiosInstance.post(`/seating/end-all/${sessionId}`);
+  return response.data;
+};

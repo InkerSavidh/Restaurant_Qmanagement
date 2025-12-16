@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { getActiveSeating, endSeatingSession, SeatedParty } from '../../api/seating.api';
+import { getActiveSeating, endSeatingSession, endAllSeatingSessionsForCustomer, SeatedParty } from '../../api/seating.api';
 import { useSocket } from '../../hooks/useSocketManager';
 import { ConnectionStatus } from '../../Components/ConnectionStatus';
 import { useToast } from '../../hooks/useToast';
@@ -16,6 +16,7 @@ interface GroupedParty {
 const OccupiedTables: React.FC = () => {
   const [seatedParties, setSeatedParties] = useState<SeatedParty[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showDebugMode, setShowDebugMode] = useState(false);
 
   const seatingLoadedRef = useRef(false);
   const { showConfirmation, showSuccess, showError } = useToast();
@@ -34,6 +35,13 @@ const OccupiedTables: React.FC = () => {
       const data = await getActiveSeating();
       setSeatedParties(data);
       console.log('✅ Seated parties loaded:', data.length);
+      console.log('📊 Raw seating data:', data.map(p => ({ 
+        id: p.id, 
+        customer: p.customerName, 
+        table: p.tableNumber, 
+        phone: p.phone,
+        seatedAt: p.seatedAt 
+      })));
     } catch (error) {
       console.error('❌ Error fetching seated parties:', error);
       setSeatedParties([]);
@@ -71,24 +79,48 @@ const OccupiedTables: React.FC = () => {
 
   const { connectionStatus, error } = useSocket(socketEvents);
 
+<<<<<<< HEAD
   // Group parties by customer name, phone, and party size (within 2 minutes)
+=======
+  // Group parties ONLY if they are the exact same allocation (same customer, same allocation time)
+>>>>>>> a161d8f41f9e2c93314c9b6212100c1effb3b764
   const groupedParties: GroupedParty[] = seatedParties.reduce((acc: GroupedParty[], party) => {
     const partyTime = new Date(party.seatedAt).getTime();
     
     const existing = acc.find((p) => {
       const existingTime = new Date(p.seatedAt).getTime();
       const timeDiff = Math.abs(partyTime - existingTime);
+<<<<<<< HEAD
       const twoMinutes = 2 * 60 * 1000; // 2 minutes in milliseconds (stricter grouping)
+=======
+      const thirtySeconds = 30 * 1000; // Only 30 seconds window (very strict)
+>>>>>>> a161d8f41f9e2c93314c9b6212100c1effb3b764
       
-      return (
-        p.customerName === party.customerName &&
+      const shouldGroup = (
+        p.customerName.toLowerCase().trim() === party.customerName.toLowerCase().trim() &&
         p.phone === party.phone &&
+<<<<<<< HEAD
         p.partySize === party.partySize && // Also match party size
         timeDiff < twoMinutes
+=======
+        p.partySize === party.partySize && // Must match exactly
+        timeDiff < thirtySeconds // Must be seated almost simultaneously (same allocation)
+>>>>>>> a161d8f41f9e2c93314c9b6212100c1effb3b764
       );
+      
+      if (shouldGroup) {
+        console.log('🔗 Grouping parties:', {
+          existing: { name: p.customerName, phone: p.phone, size: p.partySize, time: p.seatedAt },
+          new: { name: party.customerName, phone: party.phone, size: party.partySize, time: party.seatedAt },
+          timeDiff: timeDiff / 1000 + 's'
+        });
+      }
+      
+      return shouldGroup;
     });
     
     if (existing) {
+      // Only group if it's clearly the same allocation session
       existing.tables.push(party.tableNumber);
       existing.sessionIds.push(party.id);
       // Use the earliest seated time
@@ -96,6 +128,15 @@ const OccupiedTables: React.FC = () => {
         existing.seatedAt = party.seatedAt;
       }
     } else {
+      // Create new entry for each unique customer/allocation
+      console.log('➕ Creating new group for:', {
+        name: party.customerName,
+        phone: party.phone,
+        size: party.partySize,
+        table: party.tableNumber,
+        sessionId: party.id
+      });
+      
       acc.push({
         customerName: party.customerName,
         partySize: party.partySize,
@@ -108,7 +149,15 @@ const OccupiedTables: React.FC = () => {
     
     return acc;
   }, []);
+  
+  console.log('📋 Final grouped parties:', groupedParties.map(p => ({
+    name: p.customerName,
+    tables: p.tables,
+    sessionIds: p.sessionIds,
+    phone: p.phone
+  })));
 
+<<<<<<< HEAD
   const handleCheckout = (sessionIds: string[], customerName: string) => {
     const tableText = sessionIds.length === 1 ? 'table' : 'tables';
     const message = `Checkout ${customerName} from ${sessionIds.length} ${tableText}?`;
@@ -142,6 +191,96 @@ const OccupiedTables: React.FC = () => {
         duration: 8000
       }
     );
+=======
+  const handleCheckout = async (sessionIds: string[], customerName: string, isCheckoutAll: boolean = false) => {
+    console.log('🔄 Checkout requested for:', { 
+      customerName, 
+      sessionIds, 
+      tableCount: sessionIds.length,
+      isCheckoutAll,
+      affectedTables: seatedParties.filter(p => sessionIds.includes(p.id)).map(p => ({ id: p.id, table: p.tableNumber, customer: p.customerName }))
+    });
+    
+    // Show detailed confirmation with all affected sessions
+    const affectedSessions = seatedParties.filter(p => sessionIds.includes(p.id));
+    const actionType = isCheckoutAll ? 'Checkout ALL tables for' : 'Checkout';
+    const confirmMessage = `${actionType} ${customerName} from ${sessionIds.length} table(s)?\n\n` +
+      `Tables: ${affectedSessions.map(p => p.tableNumber).join(', ')}\n` +
+      `Session IDs: ${sessionIds.join(', ')}\n\n` +
+      `This will ONLY affect ${customerName}'s sessions.`;
+    
+    if (!confirm(confirmMessage)) return;
+    
+    // Log all current parties before checkout for debugging
+    console.log('📋 All parties before checkout:', seatedParties.map(p => ({ 
+      id: p.id, 
+      customer: p.customerName, 
+      table: p.tableNumber,
+      phone: p.phone 
+    })));
+    
+    // Remove ONLY the specific sessions from UI immediately
+    const previousParties = [...seatedParties];
+    setSeatedParties(prev => prev.filter(p => !sessionIds.includes(p.id)));
+    
+    try {
+      if (isCheckoutAll && sessionIds.length > 1) {
+        // Use the new bulk checkout API for multiple sessions
+        console.log('🏁 Ending ALL sessions for customer using bulk API');
+        await endAllSeatingSessionsForCustomer(sessionIds[0]); // Pass any session ID from the customer
+        console.log('✅ All sessions ended successfully for customer');
+      } else {
+        // Single session checkout or individual table checkout
+        let successCount = 0;
+        let errorCount = 0;
+        
+        for (const sessionId of sessionIds) {
+          const session = seatedParties.find(p => p.id === sessionId);
+          console.log('🏁 Ending session:', { 
+            sessionId, 
+            customer: session?.customerName, 
+            table: session?.tableNumber 
+          });
+          
+          try {
+            await endSeatingSession(sessionId);
+            console.log('✅ Session ended successfully:', sessionId);
+            successCount++;
+          } catch (sessionError: any) {
+            console.error('❌ Failed to end session:', sessionId, sessionError);
+            errorCount++;
+            
+            // If it's a 500 error, don't continue - backend might be corrupted
+            if (sessionError.response?.status === 500) {
+              throw new Error(`Backend error (500) when ending session ${sessionId}. Stopping to prevent data corruption.`);
+            }
+          }
+        }
+        
+        console.log(`✅ Checkout summary for ${customerName}: ${successCount} success, ${errorCount} errors`);
+        
+        if (successCount === 0) {
+          // No sessions were ended successfully, restore UI
+          console.log('⚠️ No sessions ended successfully, restoring UI');
+          setSeatedParties(previousParties);
+          alert('No sessions could be ended. Please try again or contact support.');
+          return;
+        }
+      }
+      
+      // Refresh data after successful checkout
+      setTimeout(async () => {
+        console.log('🔄 Refreshing data after successful checkout...');
+        await fetchSeatedParties();
+      }, 500);
+      
+    } catch (error: any) {
+      console.error('❌ Critical checkout error:', error);
+      // Restore on critical error
+      setSeatedParties(previousParties);
+      alert(`Checkout failed: ${error.message || 'Unknown error'}. UI restored to prevent data loss.`);
+    }
+>>>>>>> a161d8f41f9e2c93314c9b6212100c1effb3b764
   };
 
   const formatTime = (dateString: string) => {
@@ -153,6 +292,16 @@ const OccupiedTables: React.FC = () => {
     <div className="p-4 sm:p-6 lg:p-8">
       <ConnectionStatus status={connectionStatus} error={error} />
       <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 sm:mb-6">Seated Parties ({loading ? '...' : groupedParties.length})</h2>
+      
+      {/* Debug toggle */}
+      <div className="mb-4">
+        <button 
+          onClick={() => setShowDebugMode(!showDebugMode)}
+          className="text-xs bg-gray-100 hover:bg-gray-200 px-2 py-1 rounded"
+        >
+          {showDebugMode ? 'Hide' : 'Show'} Individual Sessions
+        </button>
+      </div>
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
         {/* Mobile: Scrollable table */}
@@ -184,10 +333,35 @@ const OccupiedTables: React.FC = () => {
               <div className="p-8 sm:p-12 text-center text-gray-500 italic text-xs sm:text-sm">
                 No parties are currently seated.
               </div>
+            ) : showDebugMode ? (
+              // Debug mode: Show individual sessions
+              <div className="divide-y divide-gray-50">
+                <div className="p-2 bg-yellow-50 text-xs text-yellow-800">
+                  Debug Mode: Individual table sessions (use this to checkout specific tables only)
+                </div>
+                {seatedParties.map((party) => (
+                  <div key={party.id} className="grid grid-cols-6 p-3 sm:p-4 text-xs sm:text-sm text-gray-700 items-center hover:bg-gray-50 border-l-2 border-yellow-400">
+                    <div className="font-semibold">{party.tableNumber}</div>
+                    <div className="truncate pr-2">{party.customerName}</div>
+                    <div>{party.partySize}</div>
+                    <div className="text-gray-500">{party.phone || '-'}</div>
+                    <div className="text-gray-500">{formatTime(party.seatedAt)}</div>
+                    <div>
+                      <button
+                        onClick={() => handleCheckout([party.id], `${party.customerName} (Table ${party.tableNumber})`, false)}
+                        className="bg-orange-500 hover:bg-orange-600 text-white px-2 py-1 rounded text-xs font-medium"
+                      >
+                        Checkout Table
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
             ) : (
+              // Normal mode: Show grouped parties
               <div className="divide-y divide-gray-50">
                 {groupedParties.map((party, index) => (
-                  <div key={index} className="grid grid-cols-6 p-3 sm:p-4 text-xs sm:text-sm text-gray-700 items-center hover:bg-gray-50">
+                  <div key={`${party.customerName}-${party.seatedAt}-${index}`} className="grid grid-cols-6 p-3 sm:p-4 text-xs sm:text-sm text-gray-700 items-center hover:bg-gray-50">
                     <div className="font-semibold">{party.tables.join(', ')}</div>
                     <div className="truncate pr-2">{party.customerName}</div>
                     <div>{party.partySize}</div>
@@ -195,10 +369,10 @@ const OccupiedTables: React.FC = () => {
                     <div className="text-gray-500">{formatTime(party.seatedAt)}</div>
                     <div>
                       <button
-                        onClick={() => handleCheckout(party.sessionIds, party.customerName)}
+                        onClick={() => handleCheckout(party.sessionIds, party.customerName, true)}
                         className="bg-[#198754] hover:bg-green-700 text-white px-3 py-1 rounded text-xs font-medium"
                       >
-                        Checkout
+                        Checkout All
                       </button>
                     </div>
                   </div>
